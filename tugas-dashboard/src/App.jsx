@@ -21,7 +21,7 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 800);
+    const timer = setTimeout(() => setLoading(false), 1200);
     return () => clearTimeout(timer);
   }, []);
 
@@ -29,8 +29,8 @@ function App() {
     darkRed: "#c21807",
     red: "#ff3333",
     lightRed: "#ff7b7b",
-    green: "#2a9d8f",
-    yellow: "#e9c46a",
+    green: "#00f5d4",
+    yellow: "#fee440",
     white: "#ffffff",
   };
 
@@ -70,20 +70,40 @@ function App() {
   ];
 
   const tableData = [
-    { id: "PRJ-01", phase: "Contracts", status: "Completed", spent: "$1,200" },
-    { id: "PRJ-02", phase: "Design", status: "Completed", spent: "$2,000" },
+    {
+      id: "PRJ-01",
+      phase: "Contracts",
+      status: "Completed",
+      spent: "$1,200",
+      health: "Good",
+    },
+    {
+      id: "PRJ-02",
+      phase: "Design",
+      status: "Completed",
+      spent: "$2,000",
+      health: "Good",
+    },
     {
       id: "PRJ-03",
       phase: "Procurement",
       status: "In Progress",
       spent: "$800",
+      health: "Warning",
     },
-    { id: "PRJ-04", phase: "Construction", status: "At Risk", spent: "$200" },
+    {
+      id: "PRJ-04",
+      phase: "Construction",
+      status: "At Risk",
+      spent: "$200",
+      health: "Danger",
+    },
     {
       id: "PRJ-05",
-      phase: "Post Construction",
+      phase: "Post Const...",
       status: "Not Started",
       spent: "$0",
+      health: "Neutral",
     },
   ];
 
@@ -104,7 +124,7 @@ function App() {
         x={x}
         y={y}
         fill="white"
-        fontSize={12}
+        fontSize={13}
         fontWeight="bold"
         textAnchor="middle"
         dominantBaseline="central"
@@ -114,84 +134,101 @@ function App() {
     );
   };
 
+  // STYLE POP-UP (TOOLTIP) DIPERBAIKI: Background gelap kaca, text terang
   const tooltipStyle = {
-    backgroundColor: "#222",
-    borderColor: "#444",
-    borderRadius: "6px",
+    backgroundColor: "rgba(10, 15, 20, 0.85)",
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: "10px",
+    boxShadow: "0 8px 32px rgba(0,0,0,0.8)",
+    backdropFilter: "blur(10px)",
+    color: "#ffffff",
+    padding: "12px",
   };
 
-  if (loading) return <div className="loading-screen">Memuat Dashboard...</div>;
+  if (loading)
+    return (
+      <div className="loading-screen">
+        <div className="loader-pulse"></div>
+        <p>Menginisialisasi Sistem Holografik...</p>
+      </div>
+    );
 
   return (
-    <div className="project-dashboard-container">
-      <div className="header-section" style={{ marginBottom: "40px" }}>
-        <h1 className="main-title">Project Risk Overview</h1>
+    <div className="project-dashboard-container animate-fade-in">
+      <div className="header-section">
+        <h1 className="main-title">PROJECT RISK COMMAND CENTER</h1>
         <p className="sub-title">
-          Dashboard to evaluate status of project risks including time, tasks,
-          workload, progress, and cost.
+          Live monitoring dashboard for project risks, workload distribution,
+          and financial health.
         </p>
       </div>
 
-      {/* --- BARIS 1: ATAS (Diberi Jarak Paksa 40px ke Bawah) --- */}
-      <div className="dashboard-row" style={{ marginBottom: "40px" }}>
-        <div className="dashboard-card">
-          <h3 className="card-title">Health Status</h3>
+      <div className="dashboard-grid">
+        {/* KARTU 1: HEALTH STATUS */}
+        <div className="dashboard-card glow-effect">
+          <div className="card-header">
+            <h3 className="card-title">Health Status</h3>
+            <div className="status-dot pulse-green"></div>
+          </div>
           <div
             className="chart-wrapper"
             style={{ justifyContent: "space-evenly" }}
           >
-            <div className="health-item">
+            <div className="health-item interactive-health">
               <div className="health-header">
-                <span className="health-label">Time Elapsed vs Progress</span>
+                <span className="health-label">Time vs Progress</span>
                 <span className="health-badge badge-good">Ahead +5%</span>
               </div>
               <div className="mini-progress-bg">
                 <div
-                  className="mini-progress-fill"
+                  className="mini-progress-fill glow-bar-green"
                   style={{ width: "55%", backgroundColor: COLORS.green }}
                 ></div>
               </div>
               <div className="health-value" style={{ marginTop: "4px" }}>
-                Actual Progress: 55% / Planned: 50%
+                Actual: 55% / Planned: 50%
               </div>
             </div>
 
-            <div className="health-item">
+            <div className="health-item interactive-health">
               <div className="health-header">
                 <span className="health-label">Task Completion</span>
                 <span className="health-badge badge-warn">35 / 100</span>
               </div>
               <div className="mini-progress-bg">
                 <div
-                  className="mini-progress-fill"
+                  className="mini-progress-fill glow-bar-yellow"
                   style={{ width: "35%", backgroundColor: COLORS.yellow }}
                 ></div>
               </div>
               <div className="health-value" style={{ marginTop: "4px" }}>
-                35% Tasks Completed, 4 Overdue
+                35% Completed, 4 Overdue
               </div>
             </div>
 
-            <div className="health-item">
+            <div className="health-item interactive-health">
               <div className="health-header">
                 <span className="health-label">Budget Burn Rate</span>
                 <span className="health-badge badge-good">Under Budget</span>
               </div>
               <div className="mini-progress-bg">
                 <div
-                  className="mini-progress-fill"
+                  className="mini-progress-fill glow-bar-green"
                   style={{ width: "42%", backgroundColor: COLORS.green }}
                 ></div>
               </div>
               <div className="health-value" style={{ marginTop: "4px" }}>
-                $4.2k Spent / $10k Total Budget (42%)
+                $4.2k Spent / $10k Total Budget
               </div>
             </div>
           </div>
         </div>
 
-        <div className="dashboard-card">
-          <h3 className="card-title">Tasks Distribution</h3>
+        {/* KARTU 2: TASKS DISTRIBUTION */}
+        <div className="dashboard-card glow-effect">
+          <div className="card-header">
+            <h3 className="card-title">Tasks Distribution</h3>
+          </div>
           <div className="chart-wrapper">
             <ResponsiveContainer width="100%" height="90%">
               <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
@@ -199,8 +236,8 @@ function App() {
                   data={taskData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={55}
-                  outerRadius={85}
+                  innerRadius={60}
+                  outerRadius={90}
                   dataKey="value"
                   stroke="none"
                   labelLine={false}
@@ -212,7 +249,7 @@ function App() {
                 </Pie>
                 <Tooltip
                   contentStyle={tooltipStyle}
-                  itemStyle={{ color: "#fff" }}
+                  itemStyle={{ color: "#fff", fontWeight: "bold" }}
                   labelStyle={{ color: "#aaa" }}
                 />
                 <Legend
@@ -224,7 +261,7 @@ function App() {
                   formatter={(value) => (
                     <span
                       style={{
-                        color: "#aaa",
+                        color: "#eee",
                         fontSize: "12px",
                         marginRight: "5px",
                       }}
@@ -238,8 +275,11 @@ function App() {
           </div>
         </div>
 
-        <div className="dashboard-card">
-          <h3 className="card-title">Phase Progress</h3>
+        {/* KARTU 3: PHASE PROGRESS */}
+        <div className="dashboard-card glow-effect">
+          <div className="card-header">
+            <h3 className="card-title">Phase Progress</h3>
+          </div>
           <div className="chart-wrapper">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -253,20 +293,20 @@ function App() {
                   type="category"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: "#aaa" }}
+                  tick={{ fontSize: 12, fill: "#ccc" }}
                   width={90}
                 />
                 <Tooltip
-                  cursor={{ fill: "#2a2a2a" }}
+                  cursor={{ fill: "rgba(255,255,255,0.1)" }}
                   contentStyle={tooltipStyle}
-                  itemStyle={{ color: "#fff" }}
+                  itemStyle={{ color: "#fff", fontWeight: "bold" }}
                   labelStyle={{ color: "#aaa" }}
                 />
                 <Bar
                   dataKey="value"
                   fill={COLORS.red}
-                  barSize={12}
-                  radius={[0, 4, 4, 0]}
+                  barSize={14}
+                  radius={[0, 6, 6, 0]}
                 >
                   {progressData.map((entry, index) => (
                     <Cell
@@ -278,19 +318,23 @@ function App() {
                     dataKey="value"
                     position="right"
                     formatter={(val) => `${val}%`}
-                    style={{ fontSize: "11px", fill: "#aaa" }}
+                    style={{
+                      fontSize: "12px",
+                      fill: "#eee",
+                      fontWeight: "bold",
+                    }}
                   />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
-      </div>
 
-      {/* --- BARIS 2: TENGAH (Diberi Jarak Paksa 40px ke Bawah) --- */}
-      <div className="dashboard-row" style={{ marginBottom: "40px" }}>
-        <div className="dashboard-card">
-          <h3 className="card-title">Schedule Variance</h3>
+        {/* KARTU 4: SCHEDULE VARIANCE */}
+        <div className="dashboard-card glow-effect">
+          <div className="card-header">
+            <h3 className="card-title">Schedule Variance</h3>
+          </div>
           <div className="chart-wrapper">
             <ResponsiveContainer width="100%" height="80%">
               <LineChart
@@ -300,13 +344,13 @@ function App() {
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#333"
+                  stroke="rgba(255,255,255,0.1)"
                 />
                 <XAxis
                   dataKey="month"
-                  axisLine={{ stroke: "#444" }}
+                  axisLine={{ stroke: "rgba(255,255,255,0.2)" }}
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: "#aaa" }}
+                  tick={{ fontSize: 12, fill: "#ccc" }}
                 />
                 <YAxis
                   axisLine={false}
@@ -317,41 +361,80 @@ function App() {
                 />
                 <Tooltip
                   contentStyle={tooltipStyle}
-                  itemStyle={{ color: "#fff" }}
+                  itemStyle={{ color: "#fff", fontWeight: "bold" }}
                   labelStyle={{ color: "#aaa" }}
                   formatter={(val) => `${val}%`}
                 />
                 <Line
                   type="monotone"
                   dataKey="planned"
-                  name="Planned (%)"
+                  name="Planned"
                   stroke={COLORS.lightRed}
                   strokeWidth={3}
-                  dot={{ r: 4, fill: COLORS.lightRed }}
+                  activeDot={{
+                    r: 8,
+                    fill: "#fff",
+                    filter: "drop-shadow(0 0 8px #ff7b7b)",
+                  }}
+                  dot={{
+                    r: 5,
+                    fill: COLORS.lightRed,
+                    stroke: "#111",
+                    strokeWidth: 2,
+                  }}
                 />
                 <Line
                   type="monotone"
                   dataKey="actual"
-                  name="Actual (%)"
+                  name="Actual"
                   stroke={COLORS.green}
                   strokeWidth={3}
-                  dot={{ r: 4, fill: COLORS.green }}
+                  activeDot={{
+                    r: 8,
+                    fill: "#fff",
+                    filter: "drop-shadow(0 0 8px #00f5d4)",
+                  }}
+                  dot={{
+                    r: 5,
+                    fill: COLORS.green,
+                    stroke: "#111",
+                    strokeWidth: 2,
+                  }}
                 />
               </LineChart>
             </ResponsiveContainer>
             <div className="custom-legend" style={{ marginTop: "5px" }}>
               <span>
-                <span style={{ color: COLORS.lightRed }}>●</span> Planned
+                <span
+                  style={{
+                    color: COLORS.lightRed,
+                    textShadow: "0 0 5px " + COLORS.lightRed,
+                  }}
+                >
+                  ●
+                </span>{" "}
+                Planned
               </span>
               <span>
-                <span style={{ color: COLORS.green }}>●</span> Actual
+                <span
+                  style={{
+                    color: COLORS.green,
+                    textShadow: "0 0 5px " + COLORS.green,
+                  }}
+                >
+                  ●
+                </span>{" "}
+                Actual
               </span>
             </div>
           </div>
         </div>
 
-        <div className="dashboard-card">
-          <h3 className="card-title">Cost Analysis</h3>
+        {/* KARTU 5: COST ANALYSIS */}
+        <div className="dashboard-card glow-effect">
+          <div className="card-header">
+            <h3 className="card-title">Cost Analysis</h3>
+          </div>
           <div className="chart-wrapper">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -361,13 +444,13 @@ function App() {
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#333"
+                  stroke="rgba(255,255,255,0.1)"
                 />
                 <XAxis
                   dataKey="name"
-                  axisLine={{ stroke: "#444" }}
+                  axisLine={{ stroke: "rgba(255,255,255,0.2)" }}
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: "#aaa" }}
+                  tick={{ fontSize: 12, fill: "#ccc" }}
                 />
                 <YAxis
                   tickFormatter={(val) => `$${val / 1000}k`}
@@ -378,12 +461,16 @@ function App() {
                 />
                 <Tooltip
                   formatter={(val) => `$${val.toLocaleString()}`}
-                  cursor={{ fill: "#2a2a2a" }}
+                  cursor={{ fill: "rgba(255,255,255,0.08)" }}
                   contentStyle={tooltipStyle}
-                  itemStyle={{ color: "#fff" }}
-                  labelStyle={{ color: "#aaa" }}
+                  itemStyle={{ color: "#fff", fontWeight: "bold" }}
+                  labelStyle={{
+                    color: "#aaa",
+                    paddingBottom: "4px",
+                    borderBottom: "1px solid #444",
+                  }}
                 />
-                <Bar dataKey="value" barSize={35} radius={[4, 4, 0, 0]}>
+                <Bar dataKey="value" barSize={35} radius={[6, 6, 0, 0]}>
                   {costData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
@@ -392,15 +479,18 @@ function App() {
                   dataKey="value"
                   position="top"
                   formatter={(val) => `$${val / 1000}k`}
-                  style={{ fontSize: "11px", fill: "#aaa" }}
+                  style={{ fontSize: "12px", fill: "#eee", fontWeight: "bold" }}
                 />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="dashboard-card">
-          <h3 className="card-title">Team Workload</h3>
+        {/* KARTU 6: TEAM WORKLOAD */}
+        <div className="dashboard-card glow-effect">
+          <div className="card-header">
+            <h3 className="card-title">Team Workload</h3>
+          </div>
           <div className="chart-wrapper">
             <ResponsiveContainer width="100%" height="85%">
               <BarChart
@@ -412,50 +502,49 @@ function App() {
                 <CartesianGrid
                   strokeDasharray="3 3"
                   horizontal={false}
-                  stroke="#333"
+                  stroke="rgba(255,255,255,0.1)"
                 />
                 <XAxis
                   type="number"
-                  tick={{ fontSize: 11, fill: "#aaa" }}
+                  tick={{ fontSize: 11, fill: "#888" }}
                   domain={[0, 15]}
-                  axisLine={{ stroke: "#444" }}
+                  axisLine={{ stroke: "rgba(255,255,255,0.2)" }}
                   tickLine={false}
                 />
                 <YAxis
                   dataKey="name"
                   type="category"
-                  axisLine={{ stroke: "#444" }}
+                  axisLine={{ stroke: "rgba(255,255,255,0.2)" }}
                   tickLine={false}
-                  tick={{ fontSize: 12, fill: "#aaa" }}
+                  tick={{ fontSize: 12, fill: "#ccc" }}
                   width={65}
                 />
                 <Tooltip
-                  cursor={{ fill: "#2a2a2a" }}
+                  cursor={{ fill: "rgba(255,255,255,0.08)" }}
                   contentStyle={tooltipStyle}
-                  itemStyle={{ color: "#fff" }}
-                  labelStyle={{ color: "#aaa" }}
+                  itemStyle={{ color: "#fff", fontWeight: "bold" }}
                 />
                 <Bar
                   dataKey="completed"
                   name="Done"
                   stackId="a"
                   fill={COLORS.darkRed}
-                  barSize={14}
+                  barSize={16}
                 />
                 <Bar
                   dataKey="remaining"
                   name="WIP"
                   stackId="a"
                   fill={COLORS.lightRed}
-                  barSize={14}
+                  barSize={16}
                 />
                 <Bar
                   dataKey="overdue"
                   name="Overdue"
                   stackId="a"
                   fill={COLORS.red}
-                  barSize={14}
-                  radius={[0, 4, 4, 0]}
+                  barSize={16}
+                  radius={[0, 6, 6, 0]}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -472,12 +561,12 @@ function App() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* --- BARIS 3: BAWAH --- */}
-      <div className="dashboard-row">
-        <div className="dashboard-card full-width-card">
-          <h3 className="card-title">Project Phase Details</h3>
+        {/* KARTU 7: TABEL (FULL WIDTH) */}
+        <div className="dashboard-card full-width-card glow-effect">
+          <div className="card-header">
+            <h3 className="card-title">Project Phase Details</h3>
+          </div>
           <div className="table-container">
             <table className="data-table">
               <thead>
@@ -486,15 +575,27 @@ function App() {
                   <th>Phase</th>
                   <th>Status</th>
                   <th>Budget Spent</th>
+                  <th>System Health</th>
                 </tr>
               </thead>
               <tbody>
                 {tableData.map((row, index) => (
                   <tr key={index}>
-                    <td>{row.id}</td>
+                    <td style={{ fontWeight: "bold", color: "#fff" }}>
+                      {row.id}
+                    </td>
                     <td>{row.phase}</td>
                     <td>{row.status}</td>
-                    <td>{row.spent}</td>
+                    <td style={{ color: COLORS.lightRed, fontWeight: "bold" }}>
+                      {row.spent}
+                    </td>
+                    <td>
+                      <span
+                        className={`status-pill ${row.health.toLowerCase()}`}
+                      >
+                        {row.health}
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>

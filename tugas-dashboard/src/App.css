@@ -1,104 +1,113 @@
-/* --- RESET BAWAAN AGAR LAYAR PENUH (FULL SCREEN) --- */
+/* --- RESET BAWAAN & BACKGROUND --- */
 :root,
 body,
 #root {
-  margin: 0 !important;
-  padding: 0 !important;
-  width: 100vw !important;
-  max-width: 100vw !important;
+  margin: 0;
+  padding: 0;
+  width: 100vw;
   min-height: 100vh;
   box-sizing: border-box;
   overflow-x: hidden;
+  background-color: #050608; /* Lebih gelap untuk kontras neon */
 }
 
-.loading-screen {
-  padding: 60px;
-  text-align: center;
-  width: 100%;
-  font-size: 20px;
-  font-family: sans-serif;
-  color: #ddd;
-  background-color: #111;
-  height: 100vh;
-}
-
-/* --- BACKGROUND & CONTAINER UTAMA --- */
+/* Background gradient dinamis */
 .project-dashboard-container {
-  background: linear-gradient(
-    135deg,
-    #e63946 0%,
-    #f4a261 35%,
-    #e9c46a 60%,
-    #2a9d8f 85%,
-    #457b9d 100%
-  );
+  background:
+    radial-gradient(circle at top right, #3a1c1d 0%, #050608 50%),
+    radial-gradient(circle at bottom left, #12212b 0%, #050608 50%);
   min-height: 100vh;
   width: 100%;
   box-sizing: border-box;
-  padding: 40px 50px;
-  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-
-  /* --- SOLUSI ABSOLUT UNTUK JARAK VERTIKAL --- */
-  display: flex;
-  flex-direction: column;
-  gap: 40px; /* Ini akan memaksa jarak pasti 40px antara Header, Baris 1, Baris 2, dan Baris 3 */
+  padding: 40px 60px 80px 60px;
+  font-family: "Inter", "Segoe UI", Roboto, sans-serif;
+  color: #fff;
 }
 
+/* --- HEADER --- */
 .header-section {
   text-align: center;
-  /* margin-bottom dihapus karena sudah di-handle oleh 'gap' pada container utama */
+  margin-bottom: 50px;
 }
 
 .main-title {
-  font-size: 32px;
-  font-weight: 700;
-  margin: 0 0 8px 0;
-  color: #ffffff;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  font-size: 36px;
+  font-weight: 800;
+  margin: 0 0 10px 0;
+  background: linear-gradient(90deg, #ff3333, #f4a261, #00f5d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow: 0 0 20px rgba(255, 51, 51, 0.2);
 }
 
 .sub-title {
-  font-size: 14px;
-  color: #f1f1f1;
-  max-width: 1000px;
+  font-size: 15px;
+  color: #aaaaaa;
+  max-width: 800px;
   margin: 0 auto;
-  line-height: 1.5;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-/* --- ROW LAYOUT --- */
-.dashboard-row {
+/* --- CSS GRID UTAMA --- */
+.dashboard-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 30px; /* Ini hanya jarak horizontal (kiri-kanan) antar kartu di dalam satu baris */
-  /* margin-bottom dihapus agar tidak bentrok */
+  gap: 40px 30px;
   width: 100%;
 }
 
-/* --- KARTU HITAM ELEGAN --- */
-.dashboard-card {
-  background: #161719;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 320px;
+.full-width-card {
+  grid-column: 1 / -1;
 }
 
-/* --- JUDUL SECTION --- */
+/* =========================================================
+   PENGUATAN EFEK KACA (GLASSMORPHISM)
+   ========================================================= */
+.dashboard-card {
+  background: rgba(15, 18, 25, 0.45); /* Latar belakang lebih transparan */
+  backdrop-filter: blur(24px); /* Blur dinaikkan drastis */
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.25); /* Pantulan cahaya dari atas */
+  border-left: 1px solid rgba(255, 255, 255, 0.15); /* Pantulan cahaya dari kiri */
+  border-radius: 18px;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  min-height: 340px;
+  box-shadow:
+    0 15px 35px rgba(0, 0, 0, 0.6),
+    inset 0 0 20px rgba(255, 255, 255, 0.02);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Efek Hover pada Kartu */
+.glow-effect:hover {
+  transform: translateY(-6px);
+  border-color: rgba(255, 51, 51, 0.4);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.8),
+    0 0 20px rgba(255, 51, 51, 0.15);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+}
+
 .card-title {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   color: #ffffff;
-  margin: 0 0 20px 0;
-  padding-bottom: 12px;
+  margin: 0;
   text-transform: uppercase;
-  text-align: left;
-  letter-spacing: 1px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  letter-spacing: 1.5px;
+  line-height: 1.5;
 }
 
 .chart-wrapper {
@@ -110,115 +119,297 @@ body,
   height: 100%;
 }
 
-/* --- STYLING HEALTH SECTION VISUAL --- */
-.health-item {
-  margin-bottom: 16px;
+/* =========================================================
+   EFEK GLOW PADA VISUALISASI SAAT DI HOVER
+   ========================================================= */
+
+/* Pie Chart Slices */
+.recharts-pie-sector {
+  transition:
+    filter 0.3s ease,
+    opacity 0.3s ease;
+  cursor: pointer;
+}
+.recharts-pie-sector:hover {
+  filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.6)) brightness(1.2);
+  opacity: 1 !important;
 }
 
+/* Bar Chart Rectangles */
+.recharts-bar-rectangle {
+  transition: filter 0.3s ease;
+  cursor: pointer;
+}
+.recharts-bar-rectangle:hover {
+  filter: drop-shadow(0 0 10px rgba(0, 245, 212, 0.7)) brightness(1.3);
+}
+
+/* Interaksi Mini Bar di Health Status */
+.interactive-health {
+  transition: transform 0.3s ease;
+  padding: 8px;
+  border-radius: 8px;
+}
+.interactive-health:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: scale(1.02);
+}
+
+/* --- HEALTH VISUALS --- */
+.health-item {
+  margin-bottom: 12px;
+}
 .health-item:last-child {
   margin-bottom: 0;
 }
-
 .health-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
-
 .health-label {
   font-size: 13px;
   font-weight: 600;
-  color: #ffffff;
+  color: #eeeeee;
 }
-
 .health-value {
   font-size: 12px;
-  color: #aaaaaa;
+  color: #888888;
 }
-
 .health-badge {
   font-size: 10px;
   font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 12px;
+  padding: 4px 10px;
+  border-radius: 20px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
 .badge-good {
-  background-color: rgba(42, 157, 143, 0.2);
-  color: #2a9d8f;
+  background-color: rgba(0, 245, 212, 0.15);
+  color: #00f5d4;
+  border: 1px solid rgba(0, 245, 212, 0.3);
 }
 .badge-warn {
-  background-color: rgba(233, 196, 106, 0.2);
-  color: #e9c46a;
+  background-color: rgba(254, 228, 64, 0.15);
+  color: #fee440;
+  border: 1px solid rgba(254, 228, 64, 0.3);
 }
 .badge-risk {
-  background-color: rgba(230, 57, 70, 0.2);
-  color: #e63946;
+  background-color: rgba(255, 51, 51, 0.15);
+  color: #ff3333;
+  border: 1px solid rgba(255, 51, 51, 0.3);
 }
 
-/* Progress bar mini */
 .mini-progress-bg {
   width: 100%;
-  height: 6px;
-  background-color: #2a2a2a;
-  border-radius: 3px;
+  height: 8px;
+  background-color: #222;
+  border-radius: 4px;
   overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }
-
 .mini-progress-fill {
   height: 100%;
-  border-radius: 3px;
+  border-radius: 4px;
+}
+.glow-bar-green {
+  box-shadow: 0 0 10px #00f5d4;
+}
+.glow-bar-yellow {
+  box-shadow: 0 0 10px #fee440;
 }
 
-/* --- LEGEND KUSTOM --- */
 .custom-legend {
   text-align: center;
   font-size: 12px;
-  color: #aaaaaa;
+  color: #aaa;
   display: flex;
   justify-content: center;
-  gap: 15px;
-  margin-top: 15px;
+  gap: 20px;
+  font-weight: 500;
 }
 
-/* --- STYLING FULL WIDTH CARD UNTUK TABEL --- */
-.full-width-card {
-  grid-column: 1 / -1;
-  min-height: auto;
-}
-
-/* --- STYLING DATA TABLE --- */
+/* --- DATA TABLE ELEGAN --- */
 .table-container {
   width: 100%;
   overflow-x: auto;
 }
-
 .data-table {
   width: 100%;
-  border-collapse: collapse;
-  color: #dddddd;
-  font-size: 13px;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+  color: #ddd;
+  font-size: 14px;
   text-align: left;
 }
-
 .data-table th {
-  padding: 14px 16px;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  padding: 16px;
+  color: #888;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background-color: rgba(0, 0, 0, 0.2);
+  letter-spacing: 1px;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
-
 .data-table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 16px;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+.data-table td:first-child {
+  border-left: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 8px 0 0 8px;
+}
+.data-table td:last-child {
+  border-right: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 0 8px 8px 0;
+}
+.data-table tbody tr {
+  transition:
+    transform 0.2s,
+    background-color 0.2s;
+  cursor: pointer;
+}
+.data-table tbody tr:hover {
+  transform: scale(1.01);
+  background-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 }
 
-.data-table tbody tr:hover {
-  background-color: rgba(255, 255, 255, 0.03);
+.status-pill {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
+.status-pill.good {
+  background: rgba(0, 245, 212, 0.2);
+  color: #00f5d4;
+  border: 1px solid rgba(0, 245, 212, 0.4);
+}
+.status-pill.warning {
+  background: rgba(254, 228, 64, 0.2);
+  color: #fee440;
+  border: 1px solid rgba(254, 228, 64, 0.4);
+}
+.status-pill.danger {
+  background: rgba(255, 51, 51, 0.2);
+  color: #ff3333;
+  border: 1px solid rgba(255, 51, 51, 0.4);
+}
+.status-pill.neutral {
+  background: rgba(255, 255, 255, 0.1);
+  color: #aaa;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* AI Insight Card */
+.ai-insight-card {
+  min-height: auto;
+  padding: 20px 28px;
+  background: linear-gradient(
+    135deg,
+    rgba(15, 18, 25, 0.6) 0%,
+    rgba(0, 245, 212, 0.05) 100%
+  );
+  border-left: 4px solid #00f5d4;
+}
+.insight-text {
+  color: #ccc;
+  line-height: 1.6;
+  font-size: 14px;
+  margin: 10px 0 0 0;
+}
+.insight-text strong {
+  color: #ff3333;
+}
+
+/* --- ANIMASI & EFEK LAINNYA --- */
+.animate-fade-in {
+  animation: fadeIn 1s ease-in-out;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.pulse-green {
+  background-color: #00f5d4;
+  box-shadow: 0 0 0 0 rgba(0, 245, 212, 0.7);
+  animation: pulseGreen 2s infinite;
+}
+@keyframes pulseGreen {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(0, 245, 212, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(0, 245, 212, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(0, 245, 212, 0);
+  }
+}
+
+/* Layar Loading */
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #050608;
+  color: #00f5d4;
+  font-family: monospace;
+  font-size: 18px;
+  letter-spacing: 2px;
+}
+.loader-pulse {
+  width: 50px;
+  height: 50px;
+  border: 3px solid #00f5d4;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 0 10px #00f5d4);
+}
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* --- RESPONSIVE MOBILE --- */
+@media (max-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 800px) {
+  .project-dashboard-container {
+    padding: 20px;
+  }
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
 }
