@@ -56,8 +56,6 @@ function App() {
     { name: "Post const...", value: 0 },
   ];
 
-  // Data Baru untuk Schedule: Bentuk Kurva Tren dari waktu ke waktu
-  // Bulan April (sekarang) sinkron dengan "Ahead +5%" di Health Status
   const scheduleData = [
     { month: "Jan", planned: 10, actual: 10 },
     { month: "Feb", planned: 20, actual: 22 },
@@ -69,6 +67,24 @@ function App() {
     { name: "Actual", value: 4200, color: COLORS.darkRed },
     { name: "Planned", value: 4500, color: COLORS.red },
     { name: "Budget", value: 10000, color: COLORS.lightRed },
+  ];
+
+  const tableData = [
+    { id: "PRJ-01", phase: "Contracts", status: "Completed", spent: "$1,200" },
+    { id: "PRJ-02", phase: "Design", status: "Completed", spent: "$2,000" },
+    {
+      id: "PRJ-03",
+      phase: "Procurement",
+      status: "In Progress",
+      spent: "$800",
+    },
+    { id: "PRJ-04", phase: "Construction", status: "At Risk", spent: "$200" },
+    {
+      id: "PRJ-05",
+      phase: "Post Construction",
+      status: "Not Started",
+      spent: "$0",
+    },
   ];
 
   const RADIAN = Math.PI / 180;
@@ -98,7 +114,6 @@ function App() {
     );
   };
 
-  // Konfigurasi Tooltip global agar teksnya TERBACA (putih) di atas pop-up gelap
   const tooltipStyle = {
     backgroundColor: "#222",
     borderColor: "#444",
@@ -109,7 +124,7 @@ function App() {
 
   return (
     <div className="project-dashboard-container">
-      <div className="header-section">
+      <div className="header-section" style={{ marginBottom: "40px" }}>
         <h1 className="main-title">Project Risk Overview</h1>
         <p className="sub-title">
           Dashboard to evaluate status of project risks including time, tasks,
@@ -117,9 +132,8 @@ function App() {
         </p>
       </div>
 
-      {/* --- BARIS ATAS --- */}
-      <div className="dashboard-row">
-        {/* KOLOM 1: HEALTH STATUS */}
+      {/* --- BARIS 1: ATAS (Diberi Jarak Paksa 40px ke Bawah) --- */}
+      <div className="dashboard-row" style={{ marginBottom: "40px" }}>
         <div className="dashboard-card">
           <h3 className="card-title">Health Status</h3>
           <div
@@ -176,7 +190,6 @@ function App() {
           </div>
         </div>
 
-        {/* KOLOM 2: TASKS */}
         <div className="dashboard-card">
           <h3 className="card-title">Tasks Distribution</h3>
           <div className="chart-wrapper">
@@ -225,7 +238,6 @@ function App() {
           </div>
         </div>
 
-        {/* KOLOM 3: PROGRESS */}
         <div className="dashboard-card">
           <h3 className="card-title">Phase Progress</h3>
           <div className="chart-wrapper">
@@ -275,9 +287,8 @@ function App() {
         </div>
       </div>
 
-      {/* --- BARIS BAWAH --- */}
-      <div className="dashboard-row">
-        {/* KOLOM 1: SCHEDULE (DIUBAH MENJADI LINE CHART TREN) */}
+      {/* --- BARIS 2: TENGAH (Diberi Jarak Paksa 40px ke Bawah) --- */}
+      <div className="dashboard-row" style={{ marginBottom: "40px" }}>
         <div className="dashboard-card">
           <h3 className="card-title">Schedule Variance</h3>
           <div className="chart-wrapper">
@@ -339,7 +350,6 @@ function App() {
           </div>
         </div>
 
-        {/* KOLOM 2: COST (FONT POPUP DIPERBAIKI) */}
         <div className="dashboard-card">
           <h3 className="card-title">Cost Analysis</h3>
           <div className="chart-wrapper">
@@ -389,7 +399,6 @@ function App() {
           </div>
         </div>
 
-        {/* KOLOM 3: WORKLOAD */}
         <div className="dashboard-card">
           <h3 className="card-title">Team Workload</h3>
           <div className="chart-wrapper">
@@ -461,6 +470,35 @@ function App() {
                 <span style={{ color: COLORS.red }}>■</span> Overdue
               </span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* --- BARIS 3: BAWAH --- */}
+      <div className="dashboard-row">
+        <div className="dashboard-card full-width-card">
+          <h3 className="card-title">Project Phase Details</h3>
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Task ID</th>
+                  <th>Phase</th>
+                  <th>Status</th>
+                  <th>Budget Spent</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tableData.map((row, index) => (
+                  <tr key={index}>
+                    <td>{row.id}</td>
+                    <td>{row.phase}</td>
+                    <td>{row.status}</td>
+                    <td>{row.spent}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

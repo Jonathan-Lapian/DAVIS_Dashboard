@@ -22,7 +22,7 @@ body,
   height: 100vh;
 }
 
-/* --- BACKGROUND GRADASI SEPERTI GAMBAR --- */
+/* --- BACKGROUND & CONTAINER UTAMA --- */
 .project-dashboard-container {
   background: linear-gradient(
     135deg,
@@ -35,15 +35,18 @@ body,
   min-height: 100vh;
   width: 100%;
   box-sizing: border-box;
-  padding: 30px 40px;
+  padding: 40px 50px;
   font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  /* --- SOLUSI ABSOLUT UNTUK JARAK VERTIKAL --- */
   display: flex;
   flex-direction: column;
+  gap: 40px; /* Ini akan memaksa jarak pasti 40px antara Header, Baris 1, Baris 2, dan Baris 3 */
 }
 
 .header-section {
-  margin-bottom: 30px;
   text-align: center;
+  /* margin-bottom dihapus karena sudah di-handle oleh 'gap' pada container utama */
 }
 
 .main-title {
@@ -63,17 +66,13 @@ body,
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-/* --- ROW LAYOUT (MENGGANTIKAN GRID TUNGGAL) --- */
-/* Ini akan memisahkan baris atas dan bawah dengan jarak yang nyata */
+/* --- ROW LAYOUT --- */
 .dashboard-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 30px; /* Jarak antar kartu di kiri-kanan */
-  margin-bottom: 50px; /* JARAK BESAR ANTARA BARIS ATAS DAN BAWAH */
-}
-
-.dashboard-row:last-child {
-  margin-bottom: 0;
+  gap: 30px; /* Ini hanya jarak horizontal (kiri-kanan) antar kartu di dalam satu baris */
+  /* margin-bottom dihapus agar tidak bentrok */
+  width: 100%;
 }
 
 /* --- KARTU HITAM ELEGAN --- */
@@ -183,4 +182,43 @@ body,
   justify-content: center;
   gap: 15px;
   margin-top: 15px;
+}
+
+/* --- STYLING FULL WIDTH CARD UNTUK TABEL --- */
+.full-width-card {
+  grid-column: 1 / -1;
+  min-height: auto;
+}
+
+/* --- STYLING DATA TABLE --- */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #dddddd;
+  font-size: 13px;
+  text-align: left;
+}
+
+.data-table th {
+  padding: 14px 16px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.data-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.data-table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.03);
 }
