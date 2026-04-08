@@ -1,302 +1,468 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
 import {
   BarChart,
   Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip as RechartsTooltip,
+  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
-  AreaChart,
-  Area,
+  Legend,
+  LabelList,
 } from "recharts";
-import "./App.css"; // MENGIMPOR STYLING
+import "./App.css";
 
 function App() {
-  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios
-      .get("https://dummyjson.com/products?limit=100")
-      .then((res) => {
-        setData(res.data.products);
-        setLoading(false);
-      })
-      .catch((err) => console.error(err));
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
   }, []);
 
-  if (loading)
+  const COLORS = {
+    darkRed: "#c21807",
+    red: "#ff3333",
+    lightRed: "#ff7b7b",
+    green: "#2a9d8f",
+    yellow: "#e9c46a",
+    white: "#ffffff",
+  };
+
+  const taskData = [
+    { name: "Complete", value: 35, color: COLORS.darkRed },
+    { name: "In Progress", value: 20, color: COLORS.lightRed },
+    { name: "Not Started", value: 45, color: COLORS.red },
+  ];
+
+  const workloadData = [
+    { name: "Mike", completed: 8, remaining: 5, overdue: 1 },
+    { name: "Jennifer", completed: 10, remaining: 3, overdue: 0 },
+    { name: "Brandon", completed: 5, remaining: 6, overdue: 2 },
+    { name: "Sam", completed: 7, remaining: 4, overdue: 1 },
+    { name: "George", completed: 5, remaining: 2, overdue: 0 },
+  ];
+
+  const progressData = [
+    { name: "Contracts", value: 100 },
+    { name: "Design", value: 85 },
+    { name: "Procurement", value: 40 },
+    { name: "Construction", value: 10 },
+    { name: "Post const...", value: 0 },
+  ];
+
+  // Data Baru untuk Schedule: Bentuk Kurva Tren dari waktu ke waktu
+  // Bulan April (sekarang) sinkron dengan "Ahead +5%" di Health Status
+  const scheduleData = [
+    { month: "Jan", planned: 10, actual: 10 },
+    { month: "Feb", planned: 20, actual: 22 },
+    { month: "Mar", planned: 35, actual: 38 },
+    { month: "Apr", planned: 50, actual: 55 },
+  ];
+
+  const costData = [
+    { name: "Actual", value: 4200, color: COLORS.darkRed },
+    { name: "Planned", value: 4500, color: COLORS.red },
+    { name: "Budget", value: 10000, color: COLORS.lightRed },
+  ];
+
+  const RADIAN = Math.PI / 180;
+  const renderCustomizedLabel = ({
+    cx,
+    cy,
+    midAngle,
+    innerRadius,
+    outerRadius,
+    value,
+  }) => {
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
     return (
-      <div style={{ padding: "40px", color: "#fff" }}>
-        Memuat data menawan...
-      </div>
+      <text
+        x={x}
+        y={y}
+        fill="white"
+        fontSize={12}
+        fontWeight="bold"
+        textAnchor="middle"
+        dominantBaseline="central"
+      >
+        {value}%
+      </text>
     );
+  };
 
-  // --- MENGHITUNG KPI ---
-  const totalProducts = data.length;
-  const avgPrice = (
-    data.reduce((sum, item) => sum + item.price, 0) / totalProducts
-  ).toFixed(2);
-  const totalStockValue = data
-    .reduce((sum, item) => sum + item.price * item.stock, 0)
-    .toLocaleString("en-US");
+  // Konfigurasi Tooltip global agar teksnya TERBACA (putih) di atas pop-up gelap
+  const tooltipStyle = {
+    backgroundColor: "#222",
+    borderColor: "#444",
+    borderRadius: "6px",
+  };
 
-  // --- PERSIAPAN DATA VISUALISASI ---
-  // 1. Data Area Chart (Meniru Line Chart "Streams")
-  const areaData = data.slice(0, 30).map((item) => ({
-    name: item.title.substring(0, 10),
-    price: item.price,
-  }));
-
-  // 2. Data Bar Chart (Meniru "Target Audience")
-  const categoryCount = data.reduce((acc, item) => {
-    acc[item.category] = (acc[item.category] || 0) + 1;
-    return acc;
-  }, {});
-  const barData = Object.keys(categoryCount)
-    .slice(0, 6)
-    .map((key) => ({
-      category: key.split("-")[0],
-      value: categoryCount[key],
-    }));
-
-  // 3. Data Pie Chart (Distribusi)
-  const pieData = Object.keys(categoryCount)
-    .slice(0, 4)
-    .map((key) => ({ name: key, value: categoryCount[key] }));
-  const PIE_COLORS = ["#ff2a2a", "#cc0000", "#21262d", "#30363d"]; // Tema merah neon & gelap
-
-  // 4. Data untuk Custom Progress Bar (Meniru "Earnings")
-  const topCategoriesByPrice = Object.keys(categoryCount)
-    .map((category) => {
-      const productsInCat = data.filter((item) => item.category === category);
-      const total = productsInCat.reduce((sum, item) => sum + item.price, 0);
-      return { category, total };
-    })
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 4);
+  if (loading) return <div className="loading-screen">Memuat Dashboard...</div>;
 
   return (
-    <div className="dashboard-container">
-      <h1 className="header-title">Product Analytics</h1>
-
-      {/* --- BARIS 1: AREA CHART (KIRI) & STATISTIK (KANAN) --- */}
-      <div className="dashboard-grid">
-        {/* Kolom Kiri: Chart Mirip Streams */}
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <div className="card-title">Total Inventory Value</div>
-              <div className="kpi-value">${totalStockValue}</div>
-            </div>
-            {/* KPI 1 */}
-            <div style={{ textAlign: "right" }}>
-              <div className="card-title">Total Items</div>
-              <div
-                style={{
-                  fontSize: "20px",
-                  fontWeight: "bold",
-                  color: "#ff2a2a",
-                }}
-              >
-                {totalProducts} PCS
-              </div>
-            </div>
-          </div>
-
-          <ResponsiveContainer width="100%" height={250}>
-            <AreaChart
-              data={areaData}
-              margin={{ top: 10, right: 0, left: -20, bottom: 0 }}
-            >
-              <defs>
-                {/* Efek transparan merah di bawah garis */}
-                <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ff2a2a" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#ff2a2a" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <RechartsTooltip
-                contentStyle={{
-                  backgroundColor: "#111318",
-                  border: "none",
-                  borderRadius: "8px",
-                  color: "#fff",
-                }}
-                itemStyle={{ color: "#ff2a2a" }}
-              />
-              <Area
-                type="monotone"
-                dataKey="price"
-                stroke="#ff2a2a"
-                strokeWidth={3}
-                fillOpacity={1}
-                fill="url(#colorPrice)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Kolom Kanan: Mirip Earnings dengan Progress Bar */}
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <div className="card-title">Avg. Price (KPI)</div>
-              <div className="kpi-value accent">${avgPrice}</div>
-            </div>
-          </div>
-
-          <div style={{ marginTop: "10px" }}>
-            {topCategoriesByPrice.map((cat, index) => (
-              <div className="progress-container" key={index}>
-                <div className="progress-label">
-                  <span>{cat.category}</span>
-                  <span>${cat.total.toLocaleString()}</span>
-                </div>
-                <div className="progress-track">
-                  <div
-                    className={`progress-fill ${index > 1 ? "orange" : ""}`}
-                    style={{
-                      width: `${(cat.total / topCategoriesByPrice[0].total) * 100}%`,
-                    }}
-                  ></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+    <div className="project-dashboard-container">
+      <div className="header-section">
+        <h1 className="main-title">Project Risk Overview</h1>
+        <p className="sub-title">
+          Dashboard to evaluate status of project risks including time, tasks,
+          workload, progress, and cost.
+        </p>
       </div>
 
-      {/* --- BARIS 2: BAR CHART, PIE CHART, & TABEL/LIST --- */}
-      <div className="dashboard-grid-bottom">
-        {/* Bar Chart Mirip Target Audience */}
-        <div className="card">
-          <div className="card-title" style={{ marginBottom: "20px" }}>
-            Category Count
-          </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={barData}>
-              <RechartsTooltip
-                cursor={{ fill: "#21262d" }}
-                contentStyle={{
-                  backgroundColor: "#111318",
-                  border: "none",
-                  borderRadius: "8px",
-                  color: "#fff",
-                }}
-              />
-              <Bar dataKey="value" fill="#ff2a2a" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Pie Chart */}
-        <div className="card">
-          <div className="card-title" style={{ marginBottom: "10px" }}>
-            Distribution
-          </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={80}
-                paddingAngle={5}
-                dataKey="value"
-              >
-                {pieData.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={PIE_COLORS[index % PIE_COLORS.length]}
-                    stroke="none"
-                  />
-                ))}
-              </Pie>
-              <RechartsTooltip
-                contentStyle={{
-                  backgroundColor: "#111318",
-                  border: "none",
-                  color: "#fff",
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Table / List Mirip Top Releases */}
-        <div className="card">
-          <div className="card-header" style={{ marginBottom: "10px" }}>
-            <div
-              className="card-title"
-              style={{ color: "#fff", fontSize: "16px" }}
-            >
-              Top Rated Products (Table)
+      {/* --- BARIS ATAS --- */}
+      <div className="dashboard-row">
+        {/* KOLOM 1: HEALTH STATUS */}
+        <div className="dashboard-card">
+          <h3 className="card-title">Health Status</h3>
+          <div
+            className="chart-wrapper"
+            style={{ justifyContent: "space-evenly" }}
+          >
+            <div className="health-item">
+              <div className="health-header">
+                <span className="health-label">Time Elapsed vs Progress</span>
+                <span className="health-badge badge-good">Ahead +5%</span>
+              </div>
+              <div className="mini-progress-bg">
+                <div
+                  className="mini-progress-fill"
+                  style={{ width: "55%", backgroundColor: COLORS.green }}
+                ></div>
+              </div>
+              <div className="health-value" style={{ marginTop: "4px" }}>
+                Actual Progress: 55% / Planned: 50%
+              </div>
             </div>
-            <div
-              style={{ fontSize: "12px", color: "#ff2a2a", cursor: "pointer" }}
-            >
-              View All
+
+            <div className="health-item">
+              <div className="health-header">
+                <span className="health-label">Task Completion</span>
+                <span className="health-badge badge-warn">35 / 100</span>
+              </div>
+              <div className="mini-progress-bg">
+                <div
+                  className="mini-progress-fill"
+                  style={{ width: "35%", backgroundColor: COLORS.yellow }}
+                ></div>
+              </div>
+              <div className="health-value" style={{ marginTop: "4px" }}>
+                35% Tasks Completed, 4 Overdue
+              </div>
+            </div>
+
+            <div className="health-item">
+              <div className="health-header">
+                <span className="health-label">Budget Burn Rate</span>
+                <span className="health-badge badge-good">Under Budget</span>
+              </div>
+              <div className="mini-progress-bg">
+                <div
+                  className="mini-progress-fill"
+                  style={{ width: "42%", backgroundColor: COLORS.green }}
+                ></div>
+              </div>
+              <div className="health-value" style={{ marginTop: "4px" }}>
+                $4.2k Spent / $10k Total Budget (42%)
+              </div>
             </div>
           </div>
+        </div>
 
-          <ul className="top-list">
-            {data
-              .sort((a, b) => b.rating - a.rating)
-              .slice(0, 3)
-              .map((item) => (
-                <li className="top-list-item" key={item.id}>
-                  <img
-                    src={item.thumbnail}
-                    alt={item.title}
-                    className="item-img"
-                  />
-                  <div className="item-info">
-                    <div className="item-title">{item.title}</div>
-                    <div className="item-subtitle">
-                      {item.category} • ⭐ {item.rating} Rating
-                    </div>
-                  </div>
-                  <div className="item-action">
-                    <span style={{ fontSize: "14px", color: "#fff" }}>
-                      ${item.price}
+        {/* KOLOM 2: TASKS */}
+        <div className="dashboard-card">
+          <h3 className="card-title">Tasks Distribution</h3>
+          <div className="chart-wrapper">
+            <ResponsiveContainer width="100%" height="90%">
+              <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                <Pie
+                  data={taskData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={85}
+                  dataKey="value"
+                  stroke="none"
+                  labelLine={false}
+                  label={renderCustomizedLabel}
+                >
+                  {taskData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  itemStyle={{ color: "#fff" }}
+                  labelStyle={{ color: "#aaa" }}
+                />
+                <Legend
+                  layout="horizontal"
+                  verticalAlign="bottom"
+                  align="center"
+                  iconType="circle"
+                  iconSize={10}
+                  formatter={(value) => (
+                    <span
+                      style={{
+                        color: "#aaa",
+                        fontSize: "12px",
+                        marginRight: "5px",
+                      }}
+                    >
+                      {value}
                     </span>
-                  </div>
-                </li>
-              ))}
-          </ul>
+                  )}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* KOLOM 3: PROGRESS */}
+        <div className="dashboard-card">
+          <h3 className="card-title">Phase Progress</h3>
+          <div className="chart-wrapper">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={progressData}
+                layout="vertical"
+                margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
+              >
+                <XAxis type="number" hide domain={[0, 100]} />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: "#aaa" }}
+                  width={90}
+                />
+                <Tooltip
+                  cursor={{ fill: "#2a2a2a" }}
+                  contentStyle={tooltipStyle}
+                  itemStyle={{ color: "#fff" }}
+                  labelStyle={{ color: "#aaa" }}
+                />
+                <Bar
+                  dataKey="value"
+                  fill={COLORS.red}
+                  barSize={12}
+                  radius={[0, 4, 4, 0]}
+                >
+                  {progressData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.value === 100 ? COLORS.darkRed : COLORS.red}
+                    />
+                  ))}
+                  <LabelList
+                    dataKey="value"
+                    position="right"
+                    formatter={(val) => `${val}%`}
+                    style={{ fontSize: "11px", fill: "#aaa" }}
+                  />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
-      {/* --- BARIS 3: INSIGHT --- */}
-      <div className="card insight-card">
-        <h3 style={{ color: "#fff", marginBottom: "15px", fontSize: "18px" }}>
-          💡 Analytical Insight
-        </h3>
-        <ul>
-          <li>
-            <strong>Distribusi Nilai Inventaris:</strong> Sebagian besar nilai
-            aset (Value) didominasi oleh top 2 kategori, menunjukkan konsentrasi
-            modal pada tipe produk tertentu.
-          </li>
-          <li>
-            <strong>Performa Kategori:</strong> Grafik Bar menunjukkan bahwa
-            kategori spesifik memiliki frekuensi kemunculan yang tinggi, namun
-            belum tentu memiliki rating tertinggi di daftar{" "}
-            <em>Top Rated Products</em>.
-          </li>
-          <li>
-            <strong>Stabilitas Harga:</strong> Area Chart menunjukkan fluktuasi
-            harga yang beragam dari produk yang terdaftar, namun rata-rata harga
-            terjaga di angka yang kompetitif (${avgPrice}).
-          </li>
-        </ul>
+      {/* --- BARIS BAWAH --- */}
+      <div className="dashboard-row">
+        {/* KOLOM 1: SCHEDULE (DIUBAH MENJADI LINE CHART TREN) */}
+        <div className="dashboard-card">
+          <h3 className="card-title">Schedule Variance</h3>
+          <div className="chart-wrapper">
+            <ResponsiveContainer width="100%" height="80%">
+              <LineChart
+                data={scheduleData}
+                margin={{ top: 20, right: 20, left: 0, bottom: 10 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#333"
+                />
+                <XAxis
+                  dataKey="month"
+                  axisLine={{ stroke: "#444" }}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: "#aaa" }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: "#888" }}
+                  width={35}
+                  domain={[0, "dataMax + 10"]}
+                />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  itemStyle={{ color: "#fff" }}
+                  labelStyle={{ color: "#aaa" }}
+                  formatter={(val) => `${val}%`}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="planned"
+                  name="Planned (%)"
+                  stroke={COLORS.lightRed}
+                  strokeWidth={3}
+                  dot={{ r: 4, fill: COLORS.lightRed }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="actual"
+                  name="Actual (%)"
+                  stroke={COLORS.green}
+                  strokeWidth={3}
+                  dot={{ r: 4, fill: COLORS.green }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            <div className="custom-legend" style={{ marginTop: "5px" }}>
+              <span>
+                <span style={{ color: COLORS.lightRed }}>●</span> Planned
+              </span>
+              <span>
+                <span style={{ color: COLORS.green }}>●</span> Actual
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* KOLOM 2: COST (FONT POPUP DIPERBAIKI) */}
+        <div className="dashboard-card">
+          <h3 className="card-title">Cost Analysis</h3>
+          <div className="chart-wrapper">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={costData}
+                margin={{ top: 20, right: 10, left: 0, bottom: 10 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#333"
+                />
+                <XAxis
+                  dataKey="name"
+                  axisLine={{ stroke: "#444" }}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: "#aaa" }}
+                />
+                <YAxis
+                  tickFormatter={(val) => `$${val / 1000}k`}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: "#888" }}
+                  width={45}
+                />
+                <Tooltip
+                  formatter={(val) => `$${val.toLocaleString()}`}
+                  cursor={{ fill: "#2a2a2a" }}
+                  contentStyle={tooltipStyle}
+                  itemStyle={{ color: "#fff" }}
+                  labelStyle={{ color: "#aaa" }}
+                />
+                <Bar dataKey="value" barSize={35} radius={[4, 4, 0, 0]}>
+                  {costData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+                <LabelList
+                  dataKey="value"
+                  position="top"
+                  formatter={(val) => `$${val / 1000}k`}
+                  style={{ fontSize: "11px", fill: "#aaa" }}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* KOLOM 3: WORKLOAD */}
+        <div className="dashboard-card">
+          <h3 className="card-title">Team Workload</h3>
+          <div className="chart-wrapper">
+            <ResponsiveContainer width="100%" height="85%">
+              <BarChart
+                data={workloadData}
+                layout="vertical"
+                stackOffset="none"
+                margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  horizontal={false}
+                  stroke="#333"
+                />
+                <XAxis
+                  type="number"
+                  tick={{ fontSize: 11, fill: "#aaa" }}
+                  domain={[0, 15]}
+                  axisLine={{ stroke: "#444" }}
+                  tickLine={false}
+                />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  axisLine={{ stroke: "#444" }}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: "#aaa" }}
+                  width={65}
+                />
+                <Tooltip
+                  cursor={{ fill: "#2a2a2a" }}
+                  contentStyle={tooltipStyle}
+                  itemStyle={{ color: "#fff" }}
+                  labelStyle={{ color: "#aaa" }}
+                />
+                <Bar
+                  dataKey="completed"
+                  name="Done"
+                  stackId="a"
+                  fill={COLORS.darkRed}
+                  barSize={14}
+                />
+                <Bar
+                  dataKey="remaining"
+                  name="WIP"
+                  stackId="a"
+                  fill={COLORS.lightRed}
+                  barSize={14}
+                />
+                <Bar
+                  dataKey="overdue"
+                  name="Overdue"
+                  stackId="a"
+                  fill={COLORS.red}
+                  barSize={14}
+                  radius={[0, 4, 4, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="custom-legend" style={{ marginTop: "0px" }}>
+              <span>
+                <span style={{ color: COLORS.darkRed }}>■</span> Done
+              </span>
+              <span>
+                <span style={{ color: COLORS.lightRed }}>■</span> WIP
+              </span>
+              <span>
+                <span style={{ color: COLORS.red }}>■</span> Overdue
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
