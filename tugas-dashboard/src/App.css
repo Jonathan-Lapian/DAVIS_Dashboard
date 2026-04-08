@@ -9,72 +9,52 @@ body,
   box-sizing: border-box;
   overflow-x: hidden;
   background-color: #030406;
+  font-family: "Inter", "Segoe UI", Roboto, sans-serif;
+  color: #fff;
 }
-
-/* =========================================================
-   CONTAINER UTAMA & BACKGROUND (BERTEKSTUR GELAP)
-   ========================================================= */
-.project-dashboard-container {
+.app-root {
   --mouse-x: -1000px;
   --mouse-y: -1000px;
-
   background:
     radial-gradient(circle at top right, rgba(20, 5, 5, 0.9) 0%, #030406 50%),
     radial-gradient(circle at bottom left, rgba(30, 0, 5, 0.9) 0%, #030406 50%),
     linear-gradient(45deg, #050608 20%, #110505 50%, #050608 80%);
-
   min-height: 100vh;
   width: 100%;
-  box-sizing: border-box;
-  padding: 40px 60px 80px 60px;
-  font-family: "Inter", "Segoe UI", Roboto, sans-serif;
-  color: #fff;
   position: relative;
   overflow: hidden;
 }
 
 /* =========================================================
-   TRACKER KURSOR: MERAH PEKAT & EFEK ADUK KACA (GLASS WARP)
+   EFEK KURSOR KACA
    ========================================================= */
 .cursor-tracker {
   position: fixed;
   top: 0;
   left: 0;
   transform: translate(var(--mouse-x), var(--mouse-y));
-  pointer-events: none; /* Wajib agar bisa klik tombol/grafik */
+  pointer-events: none;
   z-index: 5;
   transition: transform 0.05s linear;
 }
-
-/* ELEMEN 1: Efek Aduk Kaca Cair (Wajib ditaruh di bawah elemen merah) */
 .cursor-distortion {
   position: absolute;
   top: -150px;
   left: -150px;
   width: 300px;
   height: 300px;
-
-  /* Ini yang membuat efek "diaduk" tanpa merusak warna */
   backdrop-filter: blur(12px) saturate(180%) contrast(120%);
   -webkit-backdrop-filter: blur(12px) saturate(180%) contrast(120%);
-
-  /* Bentuk asimetris aneh yang jika diputar akan terlihat seperti pusaran air */
   border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
-
-  /* Animasi berputar cepat */
-  animation: fluid-stir 1.5s linear infinite;
+  animation: fluid-stir 3.6s linear infinite;
   box-shadow: inset 0 0 20px rgba(255, 0, 0, 0.1);
 }
-
-/* ELEMEN 2: Cahaya Merah Pekat Inti */
 .cursor-red-core {
   position: absolute;
   top: -300px;
   left: -300px;
   width: 600px;
   height: 600px;
-
-  /* Warna murni merah pekat, memudar di pinggir */
   background: radial-gradient(
     circle,
     rgba(220, 0, 0, 0.9) 0%,
@@ -82,16 +62,10 @@ body,
     rgba(50, 0, 0, 0.2) 40%,
     transparent 60%
   );
-
-  /* Screen membuat warna membaur dengan cahaya, tidak akan jadi hijau/biru */
   mix-blend-mode: screen;
   border-radius: 50%;
-
-  /* Sedikit efek berkedip seperti energi */
-  animation: pulse-red 2s ease-in-out infinite alternate;
+  animation: pulse-red 3.6s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
 }
-
-/* --- KEYFRAMES ANIMASI KURSOR --- */
 @keyframes fluid-stir {
   0% {
     transform: rotate(0deg) scale(1);
@@ -103,31 +77,267 @@ body,
     transform: rotate(360deg) scale(1);
   }
 }
-
 @keyframes pulse-red {
   0% {
-    transform: scale(0.95);
-    opacity: 0.8;
+    transform: scale(0.85);
+    opacity: 0.6;
   }
   100% {
-    transform: scale(1.05);
+    transform: scale(1.15);
     opacity: 1;
   }
 }
-
-/* Pastikan konten dashboard ada di atas efek kaca kursor */
 .relative-z {
   position: relative;
   z-index: 10;
 }
 
 /* =========================================================
-   UI DASHBOARD: GRID, KARTU & GLASSMORPHISM
+   LAYAR LOGIN
    ========================================================= */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+}
+.login-card {
+  background: rgba(15, 18, 25, 0.6);
+  backdrop-filter: blur(28px);
+  border: 1px solid rgba(255, 51, 51, 0.3);
+  border-radius: 18px;
+  padding: 40px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow:
+    0 15px 35px rgba(0, 0, 0, 0.8),
+    0 0 30px rgba(255, 51, 51, 0.1);
+  text-align: center;
+}
+.login-header h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #fff;
+  letter-spacing: 2px;
+}
+.login-header p {
+  color: #ff7b7b;
+  font-size: 12px;
+  letter-spacing: 1px;
+  margin-top: 5px;
+  text-transform: uppercase;
+}
+.login-form {
+  margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  text-align: left;
+}
+.input-group label {
+  font-size: 12px;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 5px;
+  display: block;
+}
+.input-group input {
+  width: 100%;
+  padding: 12px 15px;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-radius: 8px;
+  font-family: monospace;
+  transition: all 0.3s ease;
+}
+.input-group input:focus {
+  outline: none;
+  border-color: #ff3333;
+  box-shadow: 0 0 10px rgba(255, 51, 51, 0.3);
+}
+.login-btn {
+  margin-top: 10px;
+  padding: 15px;
+  width: 100%;
+  background: linear-gradient(90deg, #c21807, #ff3333);
+  border: none;
+  color: white;
+  font-weight: bold;
+  letter-spacing: 2px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+.login-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255, 51, 51, 0.5);
+}
+
+/* =========================================================
+   LAYOUT UTAMA (SIDEBAR + KONTEN)
+   ========================================================= */
+.main-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 280px;
+  height: 100%;
+  flex-shrink: 0;
+  background: rgba(10, 12, 18, 0.7);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  padding: 30px 0;
+}
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 40px;
+  padding: 0 20px;
+}
+.sidebar-logo h2 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: 2px;
+}
+.sidebar-logo span {
+  color: #ff3333;
+}
+.sidebar-nav {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0 15px;
+}
+.nav-section-title {
+  font-size: 10px;
+  color: #666;
+  letter-spacing: 2px;
+  padding: 0 20px;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+.nav-item {
+  background: transparent;
+  border: none;
+  color: #aaa;
+  text-align: left;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  transform: translateX(5px);
+}
+.nav-item.active {
+  background: rgba(255, 51, 51, 0.15);
+  color: #ff3333;
+  border-left: 4px solid #ff3333;
+}
+.nav-item.sub-nav {
+  font-size: 13px;
+  font-weight: 500;
+  padding-left: 30px;
+} /* Indentasi untuk matrix */
+
+.sidebar-footer {
+  padding: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+.user-name {
+  font-weight: bold;
+  font-size: 14px;
+  color: #fff;
+}
+.user-role {
+  font-size: 12px;
+  color: #ff7b7b;
+}
+.logout-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: 0.3s;
+}
+.logout-btn:hover {
+  background: rgba(255, 51, 51, 0.2);
+  border-color: #ff3333;
+  color: #ff3333;
+}
+
+/* AREA KONTEN */
+.content-area {
+  flex-grow: 1;
+  height: 100%;
+  overflow-y: auto;
+  padding: 40px 50px;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #ff3333 #111;
+}
+
+/* =========================================================
+   KOMPONEN KONTEN (CARD, HEADER, GRID)
+   ========================================================= */
+.dashboard-content {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.header-section {
+  margin-bottom: 40px;
+}
+.main-title {
+  font-size: 32px;
+  font-weight: 800;
+  margin: 0 0 8px 0;
+  background: linear-gradient(90deg, #ff3333, #f4a261);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+.sub-title {
+  font-size: 14px;
+  color: #aaaaaa;
+  margin: 0;
+}
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 40px 30px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 30px;
   width: 100%;
 }
 .full-width-card {
@@ -137,29 +347,23 @@ body,
 .dashboard-card {
   background: rgba(15, 18, 25, 0.5);
   backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-top: 1px solid rgba(255, 255, 255, 0.2);
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 18px;
-  padding: 24px 28px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  min-height: 340px;
-  box-shadow:
-    0 15px 35px rgba(0, 0, 0, 0.7),
-    inset 0 0 20px rgba(255, 255, 255, 0.02);
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  min-height: 300px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7);
+  transition: all 0.4s ease;
 }
-
 .glow-effect:hover {
-  transform: translateY(-6px);
-  border-color: rgba(255, 51, 51, 0.5);
+  transform: translateY(-4px);
+  border-color: rgba(255, 51, 51, 0.4);
   box-shadow:
     0 20px 40px rgba(0, 0, 0, 0.9),
-    0 0 30px rgba(255, 51, 51, 0.2);
+    0 0 20px rgba(255, 51, 51, 0.1);
 }
-
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -169,12 +373,12 @@ body,
   margin-bottom: 20px;
 }
 .card-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: #ffffff;
   margin: 0;
   text-transform: uppercase;
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
 }
 .chart-wrapper {
   flex-grow: 1;
@@ -183,58 +387,6 @@ body,
   justify-content: center;
   width: 100%;
   height: 100%;
-}
-
-/* --- HEADER TEXT --- */
-.header-section {
-  text-align: center;
-  margin-bottom: 50px;
-}
-.main-title {
-  font-size: 36px;
-  font-weight: 800;
-  margin: 0 0 10px 0;
-  background: linear-gradient(90deg, #ff3333, #f4a261, #ff7b7b);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  text-shadow: 0 0 20px rgba(255, 51, 51, 0.2);
-}
-.sub-title {
-  font-size: 15px;
-  color: #aaaaaa;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-/* --- INTERAKTIVITAS GRAFIK --- */
-.recharts-pie-sector {
-  transition:
-    filter 0.3s ease,
-    opacity 0.3s ease;
-  cursor: pointer;
-}
-.recharts-pie-sector:hover {
-  filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.8)) brightness(1.3);
-  opacity: 1 !important;
-}
-.recharts-bar-rectangle {
-  transition: filter 0.3s ease;
-  cursor: pointer;
-}
-.recharts-bar-rectangle:hover {
-  filter: drop-shadow(0 0 10px rgba(255, 51, 51, 0.8)) brightness(1.4);
-}
-
-.interactive-health {
-  transition: transform 0.3s ease;
-  padding: 8px;
-  border-radius: 8px;
-}
-.interactive-health:hover {
-  background: rgba(255, 255, 255, 0.05);
-  transform: scale(1.02);
 }
 
 /* --- DATA TABLE --- */
@@ -287,10 +439,12 @@ body,
 
 /* --- BADGES & PILLS --- */
 .status-pill {
-  padding: 4px 12px;
+  padding: 6px 14px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 .status-pill.good {
   background: rgba(0, 245, 212, 0.2);
@@ -302,109 +456,26 @@ body,
   color: #fee440;
   border: 1px solid rgba(254, 228, 64, 0.4);
 }
-.status-pill.danger {
-  background: rgba(255, 51, 51, 0.2);
-  color: #ff3333;
-  border: 1px solid rgba(255, 51, 51, 0.4);
-}
 .status-pill.neutral {
   background: rgba(255, 255, 255, 0.1);
   color: #aaa;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.health-item {
-  margin-bottom: 12px;
-}
-.health-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-.health-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #eeeeee;
-}
-.health-badge {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 20px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-.badge-good {
-  background-color: rgba(0, 245, 212, 0.15);
-  color: #00f5d4;
-  border: 1px solid rgba(0, 245, 212, 0.3);
-}
-.badge-warn {
-  background-color: rgba(254, 228, 64, 0.15);
-  color: #fee440;
-  border: 1px solid rgba(254, 228, 64, 0.3);
-}
-
-.mini-progress-bg {
-  width: 100%;
-  height: 8px;
-  background-color: rgba(0, 0, 0, 0.6);
-  border-radius: 4px;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
-}
-.mini-progress-fill {
-  height: 100%;
-  border-radius: 4px;
-  box-shadow: 0 0 8px rgba(255, 51, 51, 0.5);
-}
-
-/* --- LOADING & UTILS --- */
+/* Animasi & Utils Lainnya sama seperti sebelumnya */
 .animate-fade-in {
-  animation: fadeIn 1s ease-in-out;
+  animation: fadeIn 0.8s ease-in-out;
 }
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(15px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
-
-.loading-screen {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background-color: #030406;
-  color: #ff3333;
-  font-family: monospace;
-  font-size: 18px;
-  letter-spacing: 2px;
-}
-.loader-pulse {
-  width: 50px;
-  height: 50px;
-  border: 3px solid #ff3333;
-  border-radius: 50%;
-  border-top-color: transparent;
-  animation: spin 1s linear infinite;
-  margin-bottom: 20px;
-  filter: drop-shadow(0 0 10px #ff3333);
-}
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
 .status-dot {
   width: 10px;
   height: 10px;
@@ -412,39 +483,88 @@ body,
 }
 .pulse-red {
   background-color: #ff3333;
-  box-shadow: 0 0 0 0 rgba(255, 51, 51, 0.7);
   animation: pulseRed 2s infinite;
 }
 @keyframes pulseRed {
   0% {
-    transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(255, 51, 51, 0.7);
   }
   70% {
-    transform: scale(1);
     box-shadow: 0 0 0 10px rgba(255, 51, 51, 0);
   }
   100% {
-    transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(255, 51, 51, 0);
   }
 }
 
-/* --- RESPONSIVE --- */
-@media (max-width: 1200px) {
-  .dashboard-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+/* Insights Styling */
+.insights-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
-@media (max-width: 800px) {
-  .project-dashboard-container {
-    padding: 20px;
-  }
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-  /* Mematikan efek kursor di mobile karena tidak ada mouse */
-  .cursor-tracker {
-    display: none;
-  }
+.insight-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 14px 20px;
+  background: rgba(0, 0, 0, 0.4);
+  border-left: 4px solid #ffffff;
+  border-radius: 6px;
+}
+.insight-item.danger {
+  border-left-color: #ff3333;
+}
+.insight-item.warning {
+  border-left-color: #fee440;
+}
+.insight-item.good {
+  border-left-color: #00f5d4;
+}
+.insight-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 20px;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.insight-item.danger .insight-indicator {
+  background: #ff3333;
+  box-shadow: 0 0 10px #ff3333;
+}
+.insight-item.warning .insight-indicator {
+  background: #fee440;
+  box-shadow: 0 0 10px #fee440;
+}
+.insight-item.good .insight-indicator {
+  background: #00f5d4;
+  box-shadow: 0 0 10px #00f5d4;
+}
+.insight-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 4px;
+}
+.insight-title {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  font-family: monospace;
+}
+.insight-item.danger .insight-title {
+  color: #ff7b7b;
+}
+.insight-item.warning .insight-title {
+  color: #fee440;
+}
+.insight-item.good .insight-title {
+  color: #00f5d4;
+}
+.insight-message {
+  margin: 0;
+  font-size: 14px;
+  color: #eeeeee;
+  line-height: 1.4;
 }
