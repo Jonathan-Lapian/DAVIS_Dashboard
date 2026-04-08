@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   BarChart,
   Bar,
@@ -19,12 +19,23 @@ import "./App.css";
 
 function App() {
   const [loading, setLoading] = useState(true);
+  const containerRef = useRef(null);
 
+  // Simulasi loading screen
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 1200);
     return () => clearTimeout(timer);
   }, []);
 
+  // Menangkap posisi mouse untuk menggerakkan kursor custom
+  const handleMouseMove = (e) => {
+    if (containerRef.current) {
+      containerRef.current.style.setProperty("--mouse-x", `${e.clientX}px`);
+      containerRef.current.style.setProperty("--mouse-y", `${e.clientY}px`);
+    }
+  };
+
+  // --- DATA DASHBOARD ---
   const COLORS = {
     darkRed: "#c21807",
     red: "#ff3333",
@@ -107,6 +118,7 @@ function App() {
     },
   ];
 
+  // Kustomisasi Label Pie Chart
   const RADIAN = Math.PI / 180;
   const renderCustomizedLabel = ({
     cx,
@@ -134,7 +146,6 @@ function App() {
     );
   };
 
-  // STYLE POP-UP (TOOLTIP) DIPERBAIKI: Background gelap kaca, text terang
   const tooltipStyle = {
     backgroundColor: "rgba(10, 15, 20, 0.85)",
     borderColor: "rgba(255, 255, 255, 0.2)",
@@ -154,8 +165,20 @@ function App() {
     );
 
   return (
-    <div className="project-dashboard-container animate-fade-in">
-      <div className="header-section">
+    <div
+      className="project-dashboard-container animate-fade-in"
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+    >
+      {/* --- EFEK KURSOR KACA CAIR (MURNI CSS) --- */}
+      <div className="cursor-tracker">
+        {/* Elemen ini mendistorsi background (seperti kaca yang mengaduk) */}
+        <div className="cursor-distortion"></div>
+        {/* Elemen ini memberikan warna merah pekat yang menyala (tanpa warna hijau) */}
+        <div className="cursor-red-core"></div>
+      </div>
+
+      <div className="header-section relative-z">
         <h1 className="main-title">PROJECT RISK COMMAND CENTER</h1>
         <p className="sub-title">
           Live monitoring dashboard for project risks, workload distribution,
@@ -163,12 +186,13 @@ function App() {
         </p>
       </div>
 
-      <div className="dashboard-grid">
+      {/* --- KONTEN DASHBOARD UTAMA --- */}
+      <div className="dashboard-grid relative-z">
         {/* KARTU 1: HEALTH STATUS */}
         <div className="dashboard-card glow-effect">
           <div className="card-header">
             <h3 className="card-title">Health Status</h3>
-            <div className="status-dot pulse-green"></div>
+            <div className="status-dot pulse-red"></div>
           </div>
           <div
             className="chart-wrapper"
@@ -181,15 +205,11 @@ function App() {
               </div>
               <div className="mini-progress-bg">
                 <div
-                  className="mini-progress-fill glow-bar-green"
-                  style={{ width: "55%", backgroundColor: COLORS.green }}
+                  className="mini-progress-fill"
+                  style={{ width: "55%", backgroundColor: COLORS.red }}
                 ></div>
               </div>
-              <div className="health-value" style={{ marginTop: "4px" }}>
-                Actual: 55% / Planned: 50%
-              </div>
             </div>
-
             <div className="health-item interactive-health">
               <div className="health-header">
                 <span className="health-label">Task Completion</span>
@@ -197,15 +217,11 @@ function App() {
               </div>
               <div className="mini-progress-bg">
                 <div
-                  className="mini-progress-fill glow-bar-yellow"
-                  style={{ width: "35%", backgroundColor: COLORS.yellow }}
+                  className="mini-progress-fill"
+                  style={{ width: "35%", backgroundColor: COLORS.lightRed }}
                 ></div>
               </div>
-              <div className="health-value" style={{ marginTop: "4px" }}>
-                35% Completed, 4 Overdue
-              </div>
             </div>
-
             <div className="health-item interactive-health">
               <div className="health-header">
                 <span className="health-label">Budget Burn Rate</span>
@@ -213,12 +229,9 @@ function App() {
               </div>
               <div className="mini-progress-bg">
                 <div
-                  className="mini-progress-fill glow-bar-green"
-                  style={{ width: "42%", backgroundColor: COLORS.green }}
+                  className="mini-progress-fill"
+                  style={{ width: "42%", backgroundColor: COLORS.darkRed }}
                 ></div>
-              </div>
-              <div className="health-value" style={{ marginTop: "4px" }}>
-                $4.2k Spent / $10k Total Budget
               </div>
             </div>
           </div>
@@ -387,46 +400,22 @@ function App() {
                   type="monotone"
                   dataKey="actual"
                   name="Actual"
-                  stroke={COLORS.green}
+                  stroke={COLORS.darkRed}
                   strokeWidth={3}
                   activeDot={{
                     r: 8,
                     fill: "#fff",
-                    filter: "drop-shadow(0 0 8px #00f5d4)",
+                    filter: "drop-shadow(0 0 8px #c21807)",
                   }}
                   dot={{
                     r: 5,
-                    fill: COLORS.green,
+                    fill: COLORS.darkRed,
                     stroke: "#111",
                     strokeWidth: 2,
                   }}
                 />
               </LineChart>
             </ResponsiveContainer>
-            <div className="custom-legend" style={{ marginTop: "5px" }}>
-              <span>
-                <span
-                  style={{
-                    color: COLORS.lightRed,
-                    textShadow: "0 0 5px " + COLORS.lightRed,
-                  }}
-                >
-                  ●
-                </span>{" "}
-                Planned
-              </span>
-              <span>
-                <span
-                  style={{
-                    color: COLORS.green,
-                    textShadow: "0 0 5px " + COLORS.green,
-                  }}
-                >
-                  ●
-                </span>{" "}
-                Actual
-              </span>
-            </div>
           </div>
         </div>
 
@@ -464,11 +453,6 @@ function App() {
                   cursor={{ fill: "rgba(255,255,255,0.08)" }}
                   contentStyle={tooltipStyle}
                   itemStyle={{ color: "#fff", fontWeight: "bold" }}
-                  labelStyle={{
-                    color: "#aaa",
-                    paddingBottom: "4px",
-                    borderBottom: "1px solid #444",
-                  }}
                 />
                 <Bar dataKey="value" barSize={35} radius={[6, 6, 0, 0]}>
                   {costData.map((entry, index) => (
@@ -548,21 +532,10 @@ function App() {
                 />
               </BarChart>
             </ResponsiveContainer>
-            <div className="custom-legend" style={{ marginTop: "0px" }}>
-              <span>
-                <span style={{ color: COLORS.darkRed }}>■</span> Done
-              </span>
-              <span>
-                <span style={{ color: COLORS.lightRed }}>■</span> WIP
-              </span>
-              <span>
-                <span style={{ color: COLORS.red }}>■</span> Overdue
-              </span>
-            </div>
           </div>
         </div>
 
-        {/* KARTU 7: TABEL (FULL WIDTH) */}
+        {/* KARTU 7: TABEL DETAILS */}
         <div className="dashboard-card full-width-card glow-effect">
           <div className="card-header">
             <h3 className="card-title">Project Phase Details</h3>

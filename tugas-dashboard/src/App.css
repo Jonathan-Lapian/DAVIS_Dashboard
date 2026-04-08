@@ -1,4 +1,4 @@
-/* --- RESET BAWAAN & BACKGROUND --- */
+/* --- RESET & BASIC STYLES --- */
 :root,
 body,
 #root {
@@ -8,87 +8,156 @@ body,
   min-height: 100vh;
   box-sizing: border-box;
   overflow-x: hidden;
-  background-color: #050608; /* Lebih gelap untuk kontras neon */
+  background-color: #030406;
 }
 
-/* Background gradient dinamis */
+/* =========================================================
+   CONTAINER UTAMA & BACKGROUND (BERTEKSTUR GELAP)
+   ========================================================= */
 .project-dashboard-container {
+  --mouse-x: -1000px;
+  --mouse-y: -1000px;
+
   background:
-    radial-gradient(circle at top right, #3a1c1d 0%, #050608 50%),
-    radial-gradient(circle at bottom left, #12212b 0%, #050608 50%);
+    radial-gradient(circle at top right, rgba(20, 5, 5, 0.9) 0%, #030406 50%),
+    radial-gradient(circle at bottom left, rgba(30, 0, 5, 0.9) 0%, #030406 50%),
+    linear-gradient(45deg, #050608 20%, #110505 50%, #050608 80%);
+
   min-height: 100vh;
   width: 100%;
   box-sizing: border-box;
   padding: 40px 60px 80px 60px;
   font-family: "Inter", "Segoe UI", Roboto, sans-serif;
   color: #fff;
+  position: relative;
+  overflow: hidden;
 }
 
-/* --- HEADER --- */
-.header-section {
-  text-align: center;
-  margin-bottom: 50px;
+/* =========================================================
+   TRACKER KURSOR: MERAH PEKAT & EFEK ADUK KACA (GLASS WARP)
+   ========================================================= */
+.cursor-tracker {
+  position: fixed;
+  top: 0;
+  left: 0;
+  transform: translate(var(--mouse-x), var(--mouse-y));
+  pointer-events: none; /* Wajib agar bisa klik tombol/grafik */
+  z-index: 5;
+  transition: transform 0.05s linear;
 }
 
-.main-title {
-  font-size: 36px;
-  font-weight: 800;
-  margin: 0 0 10px 0;
-  background: linear-gradient(90deg, #ff3333, #f4a261, #00f5d4);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  text-shadow: 0 0 20px rgba(255, 51, 51, 0.2);
+/* ELEMEN 1: Efek Aduk Kaca Cair (Wajib ditaruh di bawah elemen merah) */
+.cursor-distortion {
+  position: absolute;
+  top: -150px;
+  left: -150px;
+  width: 300px;
+  height: 300px;
+
+  /* Ini yang membuat efek "diaduk" tanpa merusak warna */
+  backdrop-filter: blur(12px) saturate(180%) contrast(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%) contrast(120%);
+
+  /* Bentuk asimetris aneh yang jika diputar akan terlihat seperti pusaran air */
+  border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+
+  /* Animasi berputar cepat */
+  animation: fluid-stir 1.5s linear infinite;
+  box-shadow: inset 0 0 20px rgba(255, 0, 0, 0.1);
 }
 
-.sub-title {
-  font-size: 15px;
-  color: #aaaaaa;
-  max-width: 800px;
-  margin: 0 auto;
+/* ELEMEN 2: Cahaya Merah Pekat Inti */
+.cursor-red-core {
+  position: absolute;
+  top: -300px;
+  left: -300px;
+  width: 600px;
+  height: 600px;
+
+  /* Warna murni merah pekat, memudar di pinggir */
+  background: radial-gradient(
+    circle,
+    rgba(220, 0, 0, 0.9) 0%,
+    rgba(150, 0, 0, 0.5) 20%,
+    rgba(50, 0, 0, 0.2) 40%,
+    transparent 60%
+  );
+
+  /* Screen membuat warna membaur dengan cahaya, tidak akan jadi hijau/biru */
+  mix-blend-mode: screen;
+  border-radius: 50%;
+
+  /* Sedikit efek berkedip seperti energi */
+  animation: pulse-red 2s ease-in-out infinite alternate;
 }
 
-/* --- CSS GRID UTAMA --- */
+/* --- KEYFRAMES ANIMASI KURSOR --- */
+@keyframes fluid-stir {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.05);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes pulse-red {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+/* Pastikan konten dashboard ada di atas efek kaca kursor */
+.relative-z {
+  position: relative;
+  z-index: 10;
+}
+
+/* =========================================================
+   UI DASHBOARD: GRID, KARTU & GLASSMORPHISM
+   ========================================================= */
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 40px 30px;
   width: 100%;
 }
-
 .full-width-card {
   grid-column: 1 / -1;
 }
 
-/* =========================================================
-   PENGUATAN EFEK KACA (GLASSMORPHISM)
-   ========================================================= */
 .dashboard-card {
-  background: rgba(15, 18, 25, 0.45); /* Latar belakang lebih transparan */
-  backdrop-filter: blur(24px); /* Blur dinaikkan drastis */
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-top: 1px solid rgba(255, 255, 255, 0.25); /* Pantulan cahaya dari atas */
-  border-left: 1px solid rgba(255, 255, 255, 0.15); /* Pantulan cahaya dari kiri */
+  background: rgba(15, 18, 25, 0.5);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 18px;
   padding: 24px 28px;
   display: flex;
   flex-direction: column;
   min-height: 340px;
   box-shadow:
-    0 15px 35px rgba(0, 0, 0, 0.6),
+    0 15px 35px rgba(0, 0, 0, 0.7),
     inset 0 0 20px rgba(255, 255, 255, 0.02);
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* Efek Hover pada Kartu */
 .glow-effect:hover {
   transform: translateY(-6px);
-  border-color: rgba(255, 51, 51, 0.4);
+  border-color: rgba(255, 51, 51, 0.5);
   box-shadow:
-    0 20px 40px rgba(0, 0, 0, 0.8),
-    0 0 20px rgba(255, 51, 51, 0.15);
+    0 20px 40px rgba(0, 0, 0, 0.9),
+    0 0 30px rgba(255, 51, 51, 0.2);
 }
 
 .card-header {
@@ -99,7 +168,6 @@ body,
   padding-bottom: 12px;
   margin-bottom: 20px;
 }
-
 .card-title {
   font-size: 16px;
   font-weight: 700;
@@ -107,9 +175,7 @@ body,
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  line-height: 1.5;
 }
-
 .chart-wrapper {
   flex-grow: 1;
   display: flex;
@@ -119,11 +185,30 @@ body,
   height: 100%;
 }
 
-/* =========================================================
-   EFEK GLOW PADA VISUALISASI SAAT DI HOVER
-   ========================================================= */
+/* --- HEADER TEXT --- */
+.header-section {
+  text-align: center;
+  margin-bottom: 50px;
+}
+.main-title {
+  font-size: 36px;
+  font-weight: 800;
+  margin: 0 0 10px 0;
+  background: linear-gradient(90deg, #ff3333, #f4a261, #ff7b7b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow: 0 0 20px rgba(255, 51, 51, 0.2);
+}
+.sub-title {
+  font-size: 15px;
+  color: #aaaaaa;
+  max-width: 800px;
+  margin: 0 auto;
+}
 
-/* Pie Chart Slices */
+/* --- INTERAKTIVITAS GRAFIK --- */
 .recharts-pie-sector {
   transition:
     filter 0.3s ease,
@@ -131,20 +216,17 @@ body,
   cursor: pointer;
 }
 .recharts-pie-sector:hover {
-  filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.6)) brightness(1.2);
+  filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.8)) brightness(1.3);
   opacity: 1 !important;
 }
-
-/* Bar Chart Rectangles */
 .recharts-bar-rectangle {
   transition: filter 0.3s ease;
   cursor: pointer;
 }
 .recharts-bar-rectangle:hover {
-  filter: drop-shadow(0 0 10px rgba(0, 245, 212, 0.7)) brightness(1.3);
+  filter: drop-shadow(0 0 10px rgba(255, 51, 51, 0.8)) brightness(1.4);
 }
 
-/* Interaksi Mini Bar di Health Status */
 .interactive-health {
   transition: transform 0.3s ease;
   padding: 8px;
@@ -155,83 +237,7 @@ body,
   transform: scale(1.02);
 }
 
-/* --- HEALTH VISUALS --- */
-.health-item {
-  margin-bottom: 12px;
-}
-.health-item:last-child {
-  margin-bottom: 0;
-}
-.health-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-.health-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #eeeeee;
-}
-.health-value {
-  font-size: 12px;
-  color: #888888;
-}
-.health-badge {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 20px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.badge-good {
-  background-color: rgba(0, 245, 212, 0.15);
-  color: #00f5d4;
-  border: 1px solid rgba(0, 245, 212, 0.3);
-}
-.badge-warn {
-  background-color: rgba(254, 228, 64, 0.15);
-  color: #fee440;
-  border: 1px solid rgba(254, 228, 64, 0.3);
-}
-.badge-risk {
-  background-color: rgba(255, 51, 51, 0.15);
-  color: #ff3333;
-  border: 1px solid rgba(255, 51, 51, 0.3);
-}
-
-.mini-progress-bg {
-  width: 100%;
-  height: 8px;
-  background-color: #222;
-  border-radius: 4px;
-  overflow: hidden;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
-}
-.mini-progress-fill {
-  height: 100%;
-  border-radius: 4px;
-}
-.glow-bar-green {
-  box-shadow: 0 0 10px #00f5d4;
-}
-.glow-bar-yellow {
-  box-shadow: 0 0 10px #fee440;
-}
-
-.custom-legend {
-  text-align: center;
-  font-size: 12px;
-  color: #aaa;
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  font-weight: 500;
-}
-
-/* --- DATA TABLE ELEGAN --- */
+/* --- DATA TABLE --- */
 .table-container {
   width: 100%;
   overflow-x: auto;
@@ -279,6 +285,7 @@ body,
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 }
 
+/* --- BADGES & PILLS --- */
 .status-pill {
   padding: 4px 12px;
   border-radius: 12px;
@@ -306,28 +313,53 @@ body,
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* AI Insight Card */
-.ai-insight-card {
-  min-height: auto;
-  padding: 20px 28px;
-  background: linear-gradient(
-    135deg,
-    rgba(15, 18, 25, 0.6) 0%,
-    rgba(0, 245, 212, 0.05) 100%
-  );
-  border-left: 4px solid #00f5d4;
+.health-item {
+  margin-bottom: 12px;
 }
-.insight-text {
-  color: #ccc;
-  line-height: 1.6;
-  font-size: 14px;
-  margin: 10px 0 0 0;
+.health-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
 }
-.insight-text strong {
-  color: #ff3333;
+.health-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #eeeeee;
+}
+.health-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.badge-good {
+  background-color: rgba(0, 245, 212, 0.15);
+  color: #00f5d4;
+  border: 1px solid rgba(0, 245, 212, 0.3);
+}
+.badge-warn {
+  background-color: rgba(254, 228, 64, 0.15);
+  color: #fee440;
+  border: 1px solid rgba(254, 228, 64, 0.3);
 }
 
-/* --- ANIMASI & EFEK LAINNYA --- */
+.mini-progress-bg {
+  width: 100%;
+  height: 8px;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+.mini-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  box-shadow: 0 0 8px rgba(255, 51, 51, 0.5);
+}
+
+/* --- LOADING & UTILS --- */
 .animate-fade-in {
   animation: fadeIn 1s ease-in-out;
 }
@@ -342,40 +374,14 @@ body,
   }
 }
 
-.status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-.pulse-green {
-  background-color: #00f5d4;
-  box-shadow: 0 0 0 0 rgba(0, 245, 212, 0.7);
-  animation: pulseGreen 2s infinite;
-}
-@keyframes pulseGreen {
-  0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(0, 245, 212, 0.7);
-  }
-  70% {
-    transform: scale(1);
-    box-shadow: 0 0 0 10px rgba(0, 245, 212, 0);
-  }
-  100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(0, 245, 212, 0);
-  }
-}
-
-/* Layar Loading */
 .loading-screen {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background-color: #050608;
-  color: #00f5d4;
+  background-color: #030406;
+  color: #ff3333;
   font-family: monospace;
   font-size: 18px;
   letter-spacing: 2px;
@@ -383,12 +389,12 @@ body,
 .loader-pulse {
   width: 50px;
   height: 50px;
-  border: 3px solid #00f5d4;
+  border: 3px solid #ff3333;
   border-radius: 50%;
   border-top-color: transparent;
   animation: spin 1s linear infinite;
   margin-bottom: 20px;
-  filter: drop-shadow(0 0 10px #00f5d4);
+  filter: drop-shadow(0 0 10px #ff3333);
 }
 @keyframes spin {
   0% {
@@ -399,7 +405,32 @@ body,
   }
 }
 
-/* --- RESPONSIVE MOBILE --- */
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.pulse-red {
+  background-color: #ff3333;
+  box-shadow: 0 0 0 0 rgba(255, 51, 51, 0.7);
+  animation: pulseRed 2s infinite;
+}
+@keyframes pulseRed {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 51, 51, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(255, 51, 51, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(255, 51, 51, 0);
+  }
+}
+
+/* --- RESPONSIVE --- */
 @media (max-width: 1200px) {
   .dashboard-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -411,5 +442,9 @@ body,
   }
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+  /* Mematikan efek kursor di mobile karena tidak ada mouse */
+  .cursor-tracker {
+    display: none;
   }
 }
