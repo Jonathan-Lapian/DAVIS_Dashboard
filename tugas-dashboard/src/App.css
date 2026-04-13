@@ -31,7 +31,24 @@ body,
   overflow: hidden;
 }
 
-/* --- CRT SCANLINES & GLARE --- */
+/* --- EFEK FLASHLIGHT GLOW PADA KURSOR --- */
+.app-root::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(
+    600px circle at var(--mouse-x) var(--mouse-y),
+    rgba(0, 243, 255, 0.05),
+    transparent 40%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* --- CRT SCANLINES --- */
 .scanlines {
   position: absolute;
   top: 0;
@@ -249,7 +266,8 @@ body,
   display: block;
   font-family: monospace;
 }
-.input-group input {
+.input-group input,
+.cyber-select {
   width: 100%;
   padding: 14px 15px;
   box-sizing: border-box;
@@ -260,12 +278,18 @@ body,
   font-family: monospace;
   font-size: 16px;
   transition: all 0.3s ease;
-}
-.input-group input:focus {
   outline: none;
+}
+.input-group input:focus,
+.cyber-select:focus {
   border-color: #ff3333;
   box-shadow: 0 0 15px rgba(255, 51, 51, 0.3);
   color: #ff3333;
+}
+.cyber-select:focus {
+  border-color: #00f3ff;
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+  color: #00f3ff;
 }
 .login-btn {
   margin-top: 15px;
@@ -373,16 +397,6 @@ body,
   box-shadow: inset 0 0 10px rgba(255, 51, 51, 0.1);
   text-shadow: 0 0 5px rgba(255, 51, 51, 0.5);
 }
-.nav-item.sub-nav {
-  font-size: 12px;
-  padding-left: 30px;
-  border-left: 2px solid transparent;
-}
-.nav-item.sub-nav.active {
-  border-left: 2px solid #ff3333;
-}
-
-/* Sidebar Footer */
 .sidebar-footer {
   padding: 20px;
   border-top: 1px solid rgba(255, 51, 51, 0.15);
@@ -564,10 +578,10 @@ body,
   border-left-color: #ff3333;
 }
 .kpi-card:nth-child(3) {
-  border-left-color: #00f5d4;
+  border-left-color: #fee440;
 }
 .kpi-card:nth-child(4) {
-  border-left-color: #fee440;
+  border-left-color: #00f5d4;
 }
 .kpi-label {
   font-size: 11px;
@@ -582,23 +596,6 @@ body,
   font-family: monospace;
   letter-spacing: 1px;
 }
-.kpi-trend {
-  font-size: 11px;
-  font-family: monospace;
-}
-.neon-blue {
-  color: #00f3ff;
-  text-shadow: 0 0 10px rgba(0, 243, 255, 0.4);
-}
-.text-red {
-  color: #ff3333;
-}
-.text-green {
-  color: #00f5d4;
-}
-.text-yellow {
-  color: #fee440;
-}
 
 /* --- DASHBOARD GRID --- */
 .layout-3-col {
@@ -607,17 +604,14 @@ body,
   gap: 25px;
   width: 100%;
 }
-.layout-2-col {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 25px;
-  width: 100%;
-}
 .col-span-2 {
   grid-column: span 2;
 }
 .col-span-1 {
   grid-column: span 1;
+}
+.full-width-card {
+  grid-column: 1 / -1;
 }
 .dashboard-card {
   background: rgba(10, 12, 16, 0.6);
@@ -631,9 +625,6 @@ body,
   min-height: 300px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
   transition: all 0.4s ease;
-}
-.full-width-card {
-  grid-column: 1 / -1;
 }
 .glow-effect:hover {
   transform: translateY(-4px);
@@ -668,15 +659,15 @@ body,
   height: 100%;
 }
 
-/* --- CRUD FORMS & ACTIONS --- */
-.crud-form {
+/* --- FORMS & CRUD --- */
+.crud-form,
+.form-grid {
   display: flex;
   gap: 15px;
   align-items: center;
   flex-wrap: wrap;
 }
-.crud-form input,
-.crud-form select {
+.cyber-input {
   flex: 1;
   padding: 12px 15px;
   background: rgba(0, 0, 0, 0.5);
@@ -688,8 +679,7 @@ body,
   transition: 0.3s;
   min-width: 200px;
 }
-.crud-form input:focus,
-.crud-form select:focus {
+.cyber-input:focus {
   border-color: #00f3ff;
   box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
   background: rgba(0, 0, 0, 0.8);
@@ -768,98 +758,13 @@ body,
 .cyber-grid tbody tr:hover td:first-child {
   border-left: 2px solid #00f3ff;
 }
-.data-table:not(.cyber-grid) tbody tr:hover {
-  transform: scale(1.01);
-  background-color: rgba(255, 51, 51, 0.05);
-  border: 1px solid rgba(255, 51, 51, 0.2);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-}
-.data-table:not(.cyber-grid) td:first-child {
-  border-left: 2px solid transparent;
-}
-.data-table:not(.cyber-grid) tbody tr:hover td:first-child {
-  border-left: 2px solid #ff3333;
-}
 .small-table th,
 .small-table td {
   padding: 8px 12px;
   font-size: 12px;
 }
 
-/* --- RISK SIMULATOR STYLES --- */
-.simulator-inputs {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-.simulator-inputs label {
-  font-size: 12px;
-  color: #888;
-  font-family: monospace;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-.cyber-select {
-  padding: 12px;
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(0, 243, 255, 0.4);
-  color: #00f3ff;
-  font-family: monospace;
-  font-size: 14px;
-  outline: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.cyber-select:focus {
-  box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
-}
-.calc-output {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  font-family: monospace;
-  font-size: 14px;
-}
-.calc-row {
-  display: flex;
-  justify-content: space-between;
-  color: #ccc;
-}
-.calc-row .val {
-  font-weight: bold;
-  color: #fff;
-}
-.cyber-hr {
-  border: none;
-  border-top: 1px dashed rgba(255, 255, 255, 0.2);
-  margin: 5px 0;
-  width: 100%;
-}
-.result-row {
-  font-size: 16px;
-  font-weight: bold;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 10px;
-  border-radius: 4px;
-}
-.roi-box {
-  margin-top: 25px;
-  padding: 20px;
-  border: 1px solid #00f5d4;
-  background: rgba(0, 245, 212, 0.05);
-  border-radius: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: bold;
-  font-size: 14px;
-}
-.roi-val {
-  font-size: 24px;
-  text-shadow: 0 0 10px rgba(0, 245, 212, 0.4);
-}
-
-/* --- AI TYPEWRITER TERMINAL --- */
+/* --- AI TERMINAL --- */
 .ai-terminal {
   background: rgba(0, 5, 10, 0.8);
   border: 1px solid rgba(0, 243, 255, 0.3);
@@ -877,11 +782,6 @@ body,
   color: #00f3ff;
   font-weight: bold;
   letter-spacing: 1px;
-}
-.typing-container {
-  overflow: hidden;
-  display: inline-block;
-  white-space: nowrap;
 }
 .typewriter {
   display: inline-block;
@@ -913,12 +813,6 @@ body,
 }
 
 /* --- RADAR ANIMATION --- */
-.radar-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
 .radar-container {
   display: flex;
   flex-direction: column;
@@ -1030,31 +924,6 @@ body,
   border: 1px solid rgba(255, 51, 51, 0.4);
   box-shadow: 0 0 10px rgba(255, 51, 51, 0.2);
 }
-.status-pill.neutral {
-  background: rgba(255, 255, 255, 0.05);
-  color: #888;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* --- UTILS --- */
-.animate-fade-in {
-  animation: fadeIn 0.4s ease-out;
-}
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
 .pulse-red {
   background-color: #ff3333;
   animation: pulseRed 2s infinite;
@@ -1069,4 +938,159 @@ body,
   100% {
     box-shadow: 0 0 0 0 rgba(255, 51, 51, 0);
   }
+}
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==============================================================================
+   CSS MATRIX & AUDIT TRAIL 
+   ============================================================================== */
+
+/* --- 5x5 INTERACTIVE SPATIAL MATRIX --- */
+.matrix-wrapper {
+  display: grid;
+  grid-template-columns: repeat(5, 75px);
+  grid-template-rows: repeat(5, 75px);
+  gap: 4px;
+  position: relative;
+  padding: 20px 0 0 30px;
+  margin-bottom: 30px;
+}
+.matrix-grid {
+  display: contents;
+}
+.matrix-label-y {
+  position: absolute;
+  left: -15px;
+  top: 50%;
+  transform: rotate(-90deg) translateX(50%);
+  font-size: 12px;
+  color: #888;
+  letter-spacing: 3px;
+  font-weight: bold;
+}
+.matrix-label-x {
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: #888;
+  letter-spacing: 3px;
+  font-weight: bold;
+}
+
+.matrix-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: crosshair;
+  transition: all 0.2s ease;
+}
+.matrix-cell:hover {
+  transform: scale(1.05);
+  z-index: 10;
+  box-shadow: 0 0 15px currentColor;
+  border-color: currentColor;
+}
+.matrix-low {
+  background: rgba(0, 245, 212, 0.1);
+  color: #00f5d4;
+}
+.matrix-medium {
+  background: rgba(254, 228, 64, 0.1);
+  color: #fee440;
+}
+.matrix-high {
+  background: rgba(255, 165, 0, 0.1);
+  color: #ffa500;
+}
+.matrix-critical {
+  background: rgba(255, 51, 51, 0.1);
+  color: #ff3333;
+}
+
+.risk-dot {
+  width: 14px;
+  height: 14px;
+  background: #ffffff;
+  border-radius: 50%;
+  position: absolute;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+  animation: pulseDot 2s infinite ease-in-out;
+  cursor: pointer;
+  z-index: 5;
+  transition: 0.2s;
+}
+.risk-dot:hover {
+  background: #00f3ff;
+  box-shadow: 0 0 20px #00f3ff;
+  transform: scale(1.5) !important;
+  animation: none;
+}
+@keyframes pulseDot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(0.85);
+  }
+}
+
+/* --- AUDIT TRAIL LOG --- */
+.audit-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border-left: 2px solid rgba(0, 243, 255, 0.3);
+  padding-left: 25px;
+  margin-left: 10px;
+}
+.audit-event {
+  position: relative;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 10px 15px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.audit-event::before {
+  content: "";
+  position: absolute;
+  left: -32px;
+  top: 15px;
+  width: 12px;
+  height: 12px;
+  background: #00f3ff;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #00f3ff;
+}
+.audit-time {
+  font-size: 11px;
+  color: #00f3ff;
+  font-family: monospace;
+  display: block;
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+.audit-action {
+  font-size: 13px;
+  color: #dddddd;
+  line-height: 1.5;
 }
