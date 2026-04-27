@@ -1,190 +1,239 @@
 import React, { useState, useEffect } from "react";
 import {
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
+  LabelList,
   PieChart,
   Pie,
   Cell,
-  LabelList,
   Legend,
-  BarChart,
-  Bar,
 } from "recharts";
 import { utils, writeFile } from "xlsx";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import "./App.css";
 
 // ==============================================================================
-// 1. UTILS & STATIC DATA (SYNCHRONIZED DATASET)
+// 1. KONFIGURASI FIREBASE REALTIME DATABASE
 // ==============================================================================
-const formatMoney = (value) => {
-  if (value >= 1000000000) return `$${(value / 1000000000).toFixed(2)}B`;
-  if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-  if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-  return `$${value}`;
+import { initializeApp } from "firebase/app";
+import { getDatabase, ref, onValue, set } from "firebase/database";
+
+const firebaseConfig = {
+  databaseURL: "https://riskdashboard-6c670-default-rtdb.firebaseio.com/",
 };
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getDatabase(firebaseApp);
+window.db = db;
+
+// ==============================================================================
+// 2. SISTEM AUDIO SYNTHESIZER
+// ==============================================================================
+let audioCtx = null;
+const playUISound = (type) => {
+  try {
+    if (!audioCtx)
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    if (type === "hover") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.01, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.001,
+        audioCtx.currentTime + 0.05,
+      );
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.05);
+    } else if (type === "click") {
+      osc.type = "square";
+      osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(
+        100,
+        audioCtx.currentTime + 0.1,
+      );
+      gainNode.gain.setValueAtTime(0.02, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.001,
+        audioCtx.currentTime + 0.1,
+      );
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.1);
+    } else if (type === "alert") {
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(
+        1000,
+        audioCtx.currentTime + 0.2,
+      );
+      gainNode.gain.setValueAtTime(0.04, audioCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.2);
+    }
+  } catch (error) {
+    console.log("Audio diblokir browser");
+  }
+};
+
+// ==============================================================================
+// 3. FORMATTER & TEMA
+// ==============================================================================
+const formatIDR = (value) =>
+  `Rp ${new Intl.NumberFormat("id-ID").format(value || 0)} Jt`;
+const formatNilai = (val) => new Intl.NumberFormat("id-ID").format(val || 0);
 
 const COLORS = {
-  darkRed: "#c21807",
-  red: "#ff3333",
-  lightRed: "#ff7b7b",
-  green: "#00f5d4",
-  yellow: "#fee440",
+  red: "#E53935",
+  primary: "#FF9800", // Safety Orange
+  green: "#4CAF50",
+  yellow: "#FFC107",
   white: "#ffffff",
-  neonBlue: "#00f3ff",
-};
-
-// DATA 1: Area Chart - Metrik operasional (Disinkronkan dengan 18 Total Insiden)
-const threatTelemetryData = [
-  { month: "Jan", blocked: 7, breached: 5 },
-  { month: "Feb", blocked: 10, breached: 4 },
-  { month: "Mar", blocked: 12, breached: 3 },
-  { month: "Apr", blocked: 14, breached: 3 },
-  { month: "May", blocked: 15, breached: 2 },
-  { month: "Jun", blocked: 21, breached: 1 },
-];
-// Total Breached = 5 + 4 + 3 + 3 + 2 + 1 = 18 Insiden!
-// Warna disinkronkan secara psikologis (Kritis = Merah Gelap, Rendah = Hijau)
-const SEVERITY_COLORS = {
-  CRITICAL: COLORS.darkRed,
-  HIGH: COLORS.red,
-  MEDIUM: COLORS.yellow,
-  LOW: COLORS.green,
+  blue: "#00f3ff",
+  gray: "#888888",
 };
 
 // ==============================================================================
-// 2. MAIN APP COMPONENT (ROOT)
+// 4. KOMPONEN UTAMA (ROOT)
 // ==============================================================================
 export default function App() {
   const [role, setRole] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [theme, setTheme] = useState("dark"); // STATE TEMA TERANG/GELAP
 
-  // DATABASE 1: ASSETS (Skala Besar)
-  const [assets, setAssets] = useState([
-    {
-      id: "AST-001",
-      name: "Legacy Web Portal",
-      value: 1200000,
-      category: "Software",
-    },
-    {
-      id: "AST-002",
-      name: "Regional DB Server",
-      value: 8500000,
-      category: "Hardware",
-    },
-    {
-      id: "AST-003",
-      name: "Cloud Gateway API",
-      value: 5000000,
-      category: "Software",
-    },
-    {
-      id: "AST-004",
-      name: "Employee Endpoints",
-      value: 800000,
-      category: "Hardware",
-    },
-    {
-      id: "AST-005",
-      name: "Payment Processing API",
-      value: 15000000,
-      category: "Software",
-    },
-    {
-      id: "AST-006",
-      name: "Core Banking Mainframe",
-      value: 35000000,
-      category: "Hardware",
-    },
-    {
-      id: "AST-007",
-      name: "HR Management System",
-      value: 2500000,
-      category: "Data",
-    },
-    {
-      id: "AST-008",
-      name: "Public DNS Servers",
-      value: 500000,
-      category: "Hardware",
-    },
-  ]);
+  // --- STATE FIREBASE KOSONG ---
+  const [logs, setLogs] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [vulnerabilities, setVulnerabilities] = useState([]);
+  const [threats, setThreats] = useState([]);
+  const [controls, setControls] = useState([]);
+  const [risks, setRisks] = useState([]);
+  const [matrix1Scores, setMatrix1Scores] = useState({});
+  const [matrix2Scores, setMatrix2Scores] = useState({});
+  const [matrix3Scores, setMatrix3Scores] = useState({});
 
-  // DATABASE 2: THREATS (Skala Besar)
-  const [threats, setThreats] = useState([
-    {
-      id: "THR-001",
-      name: "Ransomware Encryption",
-      probability: 0.8,
-      category: "Malicious",
-    },
-    {
-      id: "THR-002",
-      name: "DDoS Attack",
-      probability: 0.6,
-      category: "Malicious",
-    },
-    {
-      id: "THR-003",
-      name: "SQL Injection",
-      probability: 0.4,
-      category: "Malicious",
-    },
-    {
-      id: "THR-004",
-      name: "Spear Phishing",
-      probability: 0.75,
-      category: "Malicious",
-    },
-    {
-      id: "THR-005",
-      name: "Zero-Day Exploit",
-      probability: 0.2,
-      category: "Malicious",
-    },
-    {
-      id: "THR-006",
-      name: "Insider Data Exfiltration",
-      probability: 0.15,
-      category: "Operational",
-    },
-    {
-      id: "THR-007",
-      name: "Brute Force Authentication",
-      probability: 0.9,
-      category: "Malicious",
-    },
-    {
-      id: "THR-008",
-      name: "Cross-Site Scripting (XSS)",
-      probability: 0.5,
-      category: "Malicious",
-    },
-    {
-      id: "THR-009",
-      name: "API Broken Access Control",
-      probability: 0.35,
-      category: "Malicious",
-    },
-    {
-      id: "THR-010",
-      name: "Supply Chain Compromise",
-      probability: 0.1,
-      category: "Operational",
-    },
-  ]);
+  // --- MENGHUBUNGKAN KE FIREBASE REALTIME DATABASE ---
+  useEffect(() => {
+    const safeArray = (val) => {
+      if (!val) return [];
 
-  const [assessments, setAssessments] = useState([]);
-  const [auditLogs, setAuditLogs] = useState([]);
+      let tempArray = Array.isArray(val)
+        ? val
+            .filter(Boolean)
+            .map((item, index) => ({ ...item, _fbKey: `IDX-${index}` }))
+        : Object.keys(val).map((key) => ({ ...val[key], _fbKey: key }));
 
-  // ---> EFEK KURSOR CAIR & FLASHLIGHT <---
+      return tempArray
+        .map((item) => {
+          if (typeof item !== "object" || item === null) return null;
+          let stableId = item.id || item._fbKey || `ID-${Date.now()}`;
+          stableId = String(stableId).replace(/[.#$\[\]]/g, "_");
+
+          return {
+            ...item,
+            id: stableId,
+            timestamp: item.timestamp || new Date().toISOString(),
+          };
+        })
+        .filter(Boolean);
+    };
+
+    const dbPaths = [
+      { path: "logs", setter: (val) => setLogs(safeArray(val)) },
+      { path: "assets", setter: (val) => setAssets(safeArray(val)) },
+      {
+        path: "vulnerabilities",
+        setter: (val) => setVulnerabilities(safeArray(val)),
+      },
+      { path: "threats", setter: (val) => setThreats(safeArray(val)) },
+      { path: "controls", setter: (val) => setControls(safeArray(val)) },
+      { path: "risks", setter: (val) => setRisks(safeArray(val)) },
+      { path: "matrix1Scores", setter: (val) => setMatrix1Scores(val || {}) },
+      { path: "matrix2Scores", setter: (val) => setMatrix2Scores(val || {}) },
+      { path: "matrix3Scores", setter: (val) => setMatrix3Scores(val || {}) },
+    ];
+
+    const unsubscribes = dbPaths.map(({ path, setter }) => {
+      return onValue(ref(db, path), (snapshot) => setter(snapshot.val()));
+    });
+
+    return () => unsubscribes.forEach((unsub) => unsub());
+  }, []);
+
+  // --- WRAPPER CRUD UNTUK FIREBASE ---
+  const createFirebaseSetter =
+    (path, localSetterFunction) => (newValueOrUpdater) => {
+      localSetterFunction((prevData) => {
+        const newData =
+          typeof newValueOrUpdater === "function"
+            ? newValueOrUpdater(prevData)
+            : newValueOrUpdater;
+        set(ref(db, path), newData);
+        return newData;
+      });
+    };
+
+  const addLog = (type, action, description, actingUser = role) => {
+    const newLog = {
+      id: Date.now() + Math.random(),
+      type,
+      action,
+      description,
+      user: actingUser || "SYSTEM",
+      timestamp: new Date().toISOString(),
+    };
+
+    setLogs((prevLogs) => {
+      const safePrev = Array.isArray(prevLogs) ? prevLogs : [];
+      const updatedLogs = [newLog, ...safePrev];
+      set(ref(db, "logs"), updatedLogs);
+      return updatedLogs;
+    });
+  };
+
+  // --- KALKULASI DINAMIS GLOBAL ---
+  const impactMap = {};
+  vulnerabilities.forEach((v) => {
+    let sum = 0;
+    assets.forEach((a) => {
+      const score = matrix1Scores[v.id]?.[a.id] || 0;
+      sum += score * (a.value || 0);
+    });
+    impactMap[v.id] = sum;
+  });
+
+  const threatImpMap = {};
+  threats.forEach((t) => {
+    let sum = 0;
+    vulnerabilities.forEach((v) => {
+      const score = matrix2Scores[t.id]?.[v.id] || 0;
+      sum += score * (impactMap[v.id] || 0);
+    });
+    threatImpMap[t.id] = sum;
+  });
+
+  const controlValMap = {};
+  controls.forEach((c) => {
+    let sum = 0;
+    threats.forEach((t) => {
+      const score = matrix3Scores[c.id]?.[t.id] || 0;
+      sum += score * (threatImpMap[t.id] || 0);
+    });
+    controlValMap[c.id] = sum;
+  });
+
   useEffect(() => {
     const handleMouseMove = (e) => {
       const root = document.querySelector(".app-root");
@@ -197,277 +246,51 @@ export default function App() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  // DATABASE 3: ASSESSMENTS (Skala Besar) - Dihitung akurat
-  useEffect(() => {
-    if (assessments.length === 0) {
-      setAssessments([
-        {
-          id: "RSK-001",
-          asset: "Legacy Web Portal",
-          vuln: "Outdated Framework",
-          threat: "SQL Injection",
-          l: 5,
-          i: 5,
-          control: "WAF (Web App Firewall)",
-          effect: 40,
-          score: 15.0,
-          level: { label: "CRITICAL", class: "danger" },
-          time: new Date().toLocaleString(),
-        },
-        {
-          id: "RSK-002",
-          asset: "Employee Endpoints",
-          vuln: "Lack of Awareness",
-          threat: "Spear Phishing",
-          l: 4,
-          i: 4,
-          control: "Email Security Gateway",
-          effect: 30,
-          score: 11.2,
-          level: { label: "HIGH", class: "danger" },
-          time: new Date().toLocaleString(),
-        },
-        {
-          id: "RSK-003",
-          asset: "Cloud Gateway API",
-          vuln: "Rate Limiting Absent",
-          threat: "DDoS Attack",
-          l: 5,
-          i: 4,
-          control: "Cloudflare Advanced Shield",
-          effect: 90,
-          score: 2.0,
-          level: { label: "LOW", class: "good" },
-          time: new Date().toLocaleString(),
-        },
-        {
-          id: "RSK-004",
-          asset: "Regional DB Server",
-          vuln: "Weak Password Policy",
-          threat: "Ransomware Encryption",
-          l: 3,
-          i: 5,
-          control: "EDR & Automated Backups",
-          effect: 20,
-          score: 12.0,
-          level: { label: "HIGH", class: "danger" },
-          time: new Date().toLocaleString(),
-        },
-        {
-          id: "RSK-005",
-          asset: "Payment Processing API",
-          vuln: "Missing Auth Checks",
-          threat: "Zero-Day Exploit",
-          l: 4,
-          i: 5,
-          control: "None",
-          effect: 0,
-          score: 20.0,
-          level: { label: "CRITICAL", class: "danger" },
-          time: new Date().toLocaleString(),
-        },
-        {
-          id: "RSK-006",
-          asset: "Legacy Web Portal",
-          vuln: "Unsanitized Inputs",
-          threat: "Cross-Site Scripting (XSS)",
-          l: 4,
-          i: 3,
-          control: "WAF",
-          effect: 50,
-          score: 6.0,
-          level: { label: "MEDIUM", class: "warning" },
-          time: new Date().toLocaleString(),
-        },
-        {
-          id: "RSK-007",
-          asset: "HR Management System",
-          vuln: "Over-privileged Users",
-          threat: "Insider Data Exfiltration",
-          l: 3,
-          i: 4,
-          control: "DLP (Data Loss Prevention)",
-          effect: 40,
-          score: 7.2,
-          level: { label: "MEDIUM", class: "warning" },
-          time: new Date().toLocaleString(),
-        },
-        {
-          id: "RSK-008",
-          asset: "Core Banking Mainframe",
-          vuln: "Third-party Vendor Access",
-          threat: "Supply Chain Compromise",
-          l: 3,
-          i: 5,
-          control: "Strict Network Segmentation",
-          effect: 30,
-          score: 10.5,
-          level: { label: "HIGH", class: "danger" },
-          time: new Date().toLocaleString(),
-        },
-        {
-          id: "RSK-009",
-          asset: "Legacy Web Portal",
-          vuln: "No Rate Limiting on Login",
-          threat: "Brute Force Authentication",
-          l: 5,
-          i: 3,
-          control: "Account Lockout Policy",
-          effect: 60,
-          score: 6.0,
-          level: { label: "MEDIUM", class: "warning" },
-          time: new Date().toLocaleString(),
-        },
-        {
-          id: "RSK-010",
-          asset: "Public DNS Servers",
-          vuln: "Open Resolver",
-          threat: "DDoS Attack",
-          l: 4,
-          i: 4,
-          control: "Traffic Scrubbing",
-          effect: 85,
-          score: 2.4,
-          level: { label: "LOW", class: "good" },
-          time: new Date().toLocaleString(),
-        },
-        {
-          id: "RSK-011",
-          asset: "Employee Endpoints",
-          vuln: "Outdated Antivirus Signatures",
-          threat: "Ransomware Encryption",
-          l: 4,
-          i: 5,
-          control: "Next-Gen Antivirus",
-          effect: 60,
-          score: 8.0,
-          level: { label: "MEDIUM", class: "warning" },
-          time: new Date().toLocaleString(),
-        },
-        {
-          id: "RSK-012",
-          asset: "Payment Processing API",
-          vuln: "IDOR Vulnerability",
-          threat: "API Broken Access Control",
-          l: 5,
-          i: 5,
-          control: "API Gateway Authentication",
-          effect: 20,
-          score: 20.0,
-          level: { label: "CRITICAL", class: "danger" },
-          time: new Date().toLocaleString(),
-        },
-        {
-          id: "RSK-013",
-          asset: "Regional DB Server",
-          vuln: "Unencrypted Data at Rest",
-          threat: "SQL Injection",
-          l: 3,
-          i: 5,
-          control: "Database Activity Monitoring",
-          effect: 25,
-          score: 11.25,
-          level: { label: "HIGH", class: "danger" },
-          time: new Date().toLocaleString(),
-        },
-        {
-          id: "RSK-014",
-          asset: "Legacy Web Portal",
-          vuln: "Insufficient Bandwidth",
-          threat: "DDoS Attack",
-          l: 4,
-          i: 4,
-          control: "Basic Load Balancer",
-          effect: 35,
-          score: 10.4,
-          level: { label: "HIGH", class: "danger" },
-          time: new Date().toLocaleString(),
-        },
-        {
-          id: "RSK-015",
-          asset: "Cloud Gateway API",
-          vuln: "Exposed Admin Endpoints",
-          threat: "Zero-Day Exploit",
-          l: 5,
-          i: 5,
-          control: "IPS/IDS Signatures",
-          effect: 10,
-          score: 22.5,
-          level: { label: "CRITICAL", class: "danger" },
-          time: new Date().toLocaleString(),
-        },
-        {
-          id: "RSK-016",
-          asset: "Core Banking Mainframe",
-          vuln: "Legacy Protocols Enabled",
-          threat: "Ransomware Encryption",
-          l: 2,
-          i: 5,
-          control: "Air-Gapped Backups",
-          effect: 80,
-          score: 2.0,
-          level: { label: "LOW", class: "good" },
-          time: new Date().toLocaleString(),
-        },
-        {
-          id: "RSK-017",
-          asset: "HR Management System",
-          vuln: "Single-Factor Login",
-          threat: "Brute Force Authentication",
-          l: 4,
-          i: 3,
-          control: "MFA (Multi-Factor Auth)",
-          effect: 75,
-          score: 3.0,
-          level: { label: "LOW", class: "good" },
-          time: new Date().toLocaleString(),
-        },
-        {
-          id: "RSK-018",
-          asset: "Employee Endpoints",
-          vuln: "Unrestricted Macros",
-          threat: "Spear Phishing",
-          l: 4,
-          i: 4,
-          control: "Security Awareness Training",
-          effect: 50,
-          score: 8.0,
-          level: { label: "MEDIUM", class: "warning" },
-          time: new Date().toLocaleString(),
-        },
-      ]);
-    }
-  }, []);
-
-  // Fungsi sentral Audit Trail
-  const logAudit = (action, userRole) => {
-    const newLog = {
-      time: new Date().toLocaleTimeString(),
-      user: userRole.toUpperCase(),
-      action,
-    };
-    setAuditLogs((prev) => [newLog, ...prev]);
-  };
-
   const handleLogin = (e) => {
     e.preventDefault();
+    playUISound("alert");
     const selectedRole = e.target.roleSelect.value;
     setRole(selectedRole);
-    logAudit("Session Authenticated & Initialized", selectedRole);
     setActiveTab("overview");
+    addLog(
+      "LOGIN",
+      "Sesi Sistem Dimulai",
+      `Pengguna masuk dengan otorisasi: ${selectedRole.toUpperCase()}`,
+      selectedRole,
+    );
   };
 
-  // --- 3. LOGIN SCREEN (Keamanan & RBAC) ---
+  const handleLogout = () => {
+    playUISound("click");
+    addLog(
+      "LOGOUT",
+      "Sesi Sistem Berakhir",
+      `Pengguna (${role}) keluar dari sistem.`,
+    );
+    setRole(null);
+  };
+
+  const changeTab = (tabName) => {
+    playUISound("click");
+    setActiveTab(tabName);
+  };
+
   if (!role) {
     return (
-      <div className="app-root">
+      <div className={`app-root ${theme === "light" ? "light-theme" : ""}`}>
         <div className="scanlines"></div>
         <div className="cursor-tracker">
           <div className="cursor-distortion"></div>
           <div className="cursor-red-core"></div>
         </div>
         <div className="login-container relative-z">
-          <div className="login-card glow-effect">
+          <div
+            className="login-card glow-effect"
+            style={{
+              background: "rgba(10, 10, 12, 0.95)",
+              border: `1px solid ${COLORS.primary}`,
+            }}
+          >
             <div className="login-header">
               <div
                 className="status-dot pulse-red"
@@ -477,30 +300,86 @@ export default function App() {
                   height: "15px",
                 }}
               ></div>
-              <h2 className="glitch-text" data-text="NYS CYBER COMMAND">
-                NYS CYBER COMMAND
+              <h2
+                className="glitch-text"
+                data-text="SMA MINING COMMAND"
+                style={{ color: "#fff" }}
+              >
+                SMA MINING COMMAND
               </h2>
-              <p>Level 5 Clearance Required</p>
+              <p style={{ color: COLORS.primary }}>
+                Sistem Evaluasi Risiko 3-Tahap
+              </p>
             </div>
             <form onSubmit={handleLogin} className="login-form">
               <div className="input-group">
-                <label>Analyst Identification</label>
-                <input type="text" placeholder="IT-DIR-01" required />
+                <label style={{ color: "#888" }}>ID Pengawas Lapangan</label>
+                <input
+                  type="text"
+                  placeholder="SMA-OPS-01"
+                  required
+                  onFocus={() => playUISound("hover")}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "rgba(0,0,0,0.8)",
+                    border: `1px solid #444`,
+                    color: COLORS.primary,
+                    outline: "none",
+                  }}
+                />
               </div>
               <div className="input-group">
-                <label>Role / Security Clearance</label>
-                <select name="roleSelect" className="cyber-select" required>
-                  <option value="admin">Admin (Full Access)</option>
-                  <option value="analyst">Analyst (Assess & Read)</option>
-                  <option value="viewer">Viewer (Read Only)</option>
+                <label style={{ color: "#888" }}>Otoritas Akses</label>
+                <select
+                  name="roleSelect"
+                  required
+                  onFocus={() => playUISound("hover")}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "rgba(0,0,0,0.8)",
+                    border: `1px solid #444`,
+                    color: COLORS.primary,
+                    outline: "none",
+                  }}
+                >
+                  <option value="admin">Manajer Lapangan (Akses Penuh)</option>
+                  <option value="viewer">Pengamat (Hanya Baca)</option>
                 </select>
               </div>
               <div className="input-group">
-                <label>Decryption Passkey</label>
-                <input type="password" placeholder="••••••••" required />
+                <label style={{ color: "#888" }}>Kata Sandi Sistem</label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  required
+                  onFocus={() => playUISound("hover")}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "rgba(0,0,0,0.8)",
+                    border: `1px solid #444`,
+                    color: COLORS.primary,
+                    outline: "none",
+                  }}
+                />
               </div>
-              <button type="submit" className="login-btn">
-                INITIALIZE HANDSHAKE
+              <button
+                type="submit"
+                onMouseEnter={() => playUISound("hover")}
+                style={{
+                  width: "100%",
+                  padding: "15px",
+                  background: "transparent",
+                  border: `1px solid ${COLORS.primary}`,
+                  color: COLORS.primary,
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  marginTop: "10px",
+                }}
+              >
+                MASUK KE RUANG KENDALI
               </button>
             </form>
           </div>
@@ -509,9 +388,8 @@ export default function App() {
     );
   }
 
-  // --- 4. MAIN LAYOUT & SIDEBAR ---
   return (
-    <div className="app-root">
+    <div className={`app-root ${theme === "light" ? "light-theme" : ""}`}>
       <div className="scanlines"></div>
       <div className="cursor-tracker">
         <div className="cursor-distortion"></div>
@@ -519,137 +397,305 @@ export default function App() {
       </div>
 
       <div className="main-layout relative-z">
-        {/* SIDEBAR NAVIGATION */}
-        <aside className="sidebar">
-          <div className="sidebar-logo">
-            <h2>
-              NEXUS<span>_</span>
+        <aside
+          className="sidebar"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            height: "100vh",
+            overflow: "hidden",
+            padding: 0,
+          }}
+        >
+          <div
+            className="sidebar-logo"
+            style={{
+              flexShrink: 0,
+              padding: "30px 20px 20px 20px",
+              textAlign: "center",
+            }}
+          >
+            <h2
+              style={{
+                color: "#fff",
+                margin: 0,
+                fontSize: "28px",
+                letterSpacing: "4px",
+                fontFamily: "monospace",
+              }}
+            >
+              SMA<span style={{ color: COLORS.primary }}>_</span>OPS
             </h2>
           </div>
-          <nav className="sidebar-nav">
-            <div className="nav-section-title">COMMAND CENTER</div>
+
+          <nav
+            className="sidebar-nav"
+            style={{
+              flexGrow: 1,
+              overflowY: "auto",
+              padding: "0 20px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+            }}
+          >
+            <div className="nav-section-title" style={{ marginTop: "10px" }}>
+              RUANG KENDALI
+            </div>
             <button
+              onMouseEnter={() => playUISound("hover")}
               className={`nav-item ${activeTab === "overview" ? "active" : ""}`}
-              onClick={() => setActiveTab("overview")}
+              onClick={() => changeTab("overview")}
             >
-              1. System Overview
+              1. Dasbor Utama
             </button>
             <button
+              onMouseEnter={() => playUISound("hover")}
               className={`nav-item ${activeTab === "matrix" ? "active" : ""}`}
-              onClick={() => setActiveTab("matrix")}
+              onClick={() => changeTab("matrix")}
             >
-              2. Heatmap Matrix
+              2. Kalkulator Matriks
             </button>
 
             <div className="nav-section-title" style={{ marginTop: "20px" }}>
-              RISK WORKFLOW
+              REGISTRI BASIS DATA
             </div>
-            {(role === "admin" || role === "analyst") && (
-              <button
-                className={`nav-item ${activeTab === "assessment" ? "active" : ""}`}
-                onClick={() => setActiveTab("assessment")}
-              >
-                3. Execute Assessment
-              </button>
-            )}
             <button
+              onMouseEnter={() => playUISound("hover")}
               className={`nav-item ${activeTab === "assets" ? "active" : ""}`}
-              onClick={() => setActiveTab("assets")}
+              onClick={() => changeTab("assets")}
             >
-              4. Asset Registry
+              3. Registri Aset
             </button>
             <button
-              className={`nav-item ${activeTab === "threats" ? "active" : ""}`}
-              onClick={() => setActiveTab("threats")}
+              onMouseEnter={() => playUISound("hover")}
+              className={`nav-item ${activeTab === "vulns" ? "active" : ""}`}
+              onClick={() => changeTab("vulns")}
             >
-              5. Threat Intel
+              4. Kerentanan
+            </button>
+            <button
+              onMouseEnter={() => playUISound("hover")}
+              className={`nav-item ${activeTab === "threats" ? "active" : ""}`}
+              onClick={() => changeTab("threats")}
+            >
+              5. Ancaman
+            </button>
+            <button
+              onMouseEnter={() => playUISound("hover")}
+              className={`nav-item ${activeTab === "controls" ? "active" : ""}`}
+              onClick={() => changeTab("controls")}
+            >
+              6. Kontrol Mitigasi
             </button>
 
             <div className="nav-section-title" style={{ marginTop: "20px" }}>
-              DATA & EXPORT
+              ANALISA RISIKO
             </div>
             <button
-              className={`nav-item ${activeTab === "audit" ? "active" : ""}`}
-              onClick={() => setActiveTab("audit")}
+              onMouseEnter={() => playUISound("hover")}
+              className={`nav-item ${activeTab === "risks" ? "active" : ""}`}
+              onClick={() => changeTab("risks")}
+              style={{
+                borderLeft:
+                  activeTab === "risks" ? `4px solid ${COLORS.red}` : "none",
+              }}
             >
-              6. Audit Trail
+              7. Manajemen Risiko
+            </button>
+
+            <div className="nav-section-title" style={{ marginTop: "20px" }}>
+              SISTEM & RIWAYAT
+            </div>
+            <button
+              onMouseEnter={() => playUISound("hover")}
+              className={`nav-item ${activeTab === "export" ? "active" : ""}`}
+              onClick={() => changeTab("export")}
+            >
+              8. Cetak Laporan
             </button>
             <button
-              className={`nav-item ${activeTab === "export" ? "active" : ""}`}
-              onClick={() => setActiveTab("export")}
+              onMouseEnter={() => playUISound("hover")}
+              className={`nav-item ${activeTab === "history" ? "active" : ""}`}
+              onClick={() => changeTab("history")}
             >
-              7. Export Center
+              9. Riwayat Aktivitas
             </button>
           </nav>
 
-          <div className="sidebar-footer">
-            <div className="system-status-box">
-              <span className="sys-label">SYS. POSTURE</span>
-              <span className="sys-value defcon-3">DEFCON 3</span>
-            </div>
-            <div className="user-info-bar">
-              <div className="user-info">
-                <span className="user-name">{role.toUpperCase()}</span>
-                <span className="user-role">Clearance Granted</span>
+          <div
+            className="sidebar-footer"
+            style={{
+              flexShrink: 0,
+              padding: "20px",
+              borderTop: `1px solid rgba(255, 152, 0, 0.15)`,
+              marginTop: 0,
+            }}
+          >
+            {/* --- TOGGLE TEMA SWITCH (SVG) --- */}
+            <div
+              className={`theme-toggle-wrapper ${theme}`}
+              onClick={() => {
+                playUISound("click");
+                setTheme(theme === "dark" ? "light" : "dark");
+              }}
+              onMouseEnter={() => playUISound("hover")}
+            >
+              <div className="theme-toggle-switch">
+                <div className="toggle-thumb"></div>
+                {/* SVG Matahari (Kiri) */}
+                <svg
+                  className="icon-sun"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="5"></circle>
+                  <line x1="12" y1="1" x2="12" y2="3"></line>
+                  <line x1="12" y1="21" x2="12" y2="23"></line>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                  <line x1="1" y1="12" x2="3" y2="12"></line>
+                  <line x1="21" y1="12" x2="23" y2="12"></line>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                {/* SVG Bulan (Kanan) */}
+                <svg
+                  className="icon-moon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
               </div>
-              <button
-                className="logout-btn"
-                onClick={() => {
-                  setRole(null);
-                  logAudit("Session Terminated", role);
-                }}
-              >
-                EXIT
-              </button>
+              <span className="theme-label">
+                {theme === "dark" ? "MODE GELAP" : "MODE TERANG"}
+              </span>
             </div>
+
+            <button
+              className="logout-btn"
+              onMouseEnter={() => playUISound("hover")}
+              onClick={handleLogout}
+              style={{ width: "100%" }}
+            >
+              KELUAR SISTEM
+            </button>
           </div>
         </aside>
 
-        {/* MAIN CONTENT RENDERER */}
         <main className="content-area">
           {activeTab === "overview" && (
             <DashboardOverview
               assets={assets}
+              vulnerabilities={vulnerabilities}
               threats={threats}
-              assessments={assessments}
-            />
-          )}
-          {activeTab === "assessment" && (
-            <RiskAssessmentWorkflow
-              assets={assets}
-              threats={threats}
-              assessments={assessments}
-              setAssessments={setAssessments}
-              logAudit={logAudit}
-              role={role}
+              controls={controls}
+              risks={risks}
+              impactMap={impactMap}
+              threatImpMap={threatImpMap}
+              controlValMap={controlValMap}
             />
           )}
           {activeTab === "matrix" && (
-            <MatrixHeatmap assessments={assessments} />
+            <MatrixEngine
+              assets={assets}
+              vulnerabilities={vulnerabilities}
+              threats={threats}
+              controls={controls}
+              matrix1Scores={matrix1Scores}
+              matrix2Scores={matrix2Scores}
+              matrix3Scores={matrix3Scores}
+              impactMap={impactMap}
+              threatImpMap={threatImpMap}
+              controlValMap={controlValMap}
+              role={role}
+              playUISound={playUISound}
+              addLog={addLog}
+            />
           )}
           {activeTab === "assets" && (
             <AssetManager
               assets={assets}
-              setAssets={setAssets}
-              logAudit={logAudit}
+              setAssets={createFirebaseSetter("assets", setAssets)}
               role={role}
+              playUISound={playUISound}
+              addLog={addLog}
+            />
+          )}
+          {activeTab === "vulns" && (
+            <GenericManager
+              data={vulnerabilities}
+              setData={createFirebaseSetter(
+                "vulnerabilities",
+                setVulnerabilities,
+              )}
+              title="MANAJEMEN KERENTANAN"
+              prefix="VULN"
+              color={COLORS.primary}
+              role={role}
+              playUISound={playUISound}
+              addLog={addLog}
             />
           )}
           {activeTab === "threats" && (
-            <ThreatManager
-              threats={threats}
-              setThreats={setThreats}
-              logAudit={logAudit}
+            <GenericManager
+              data={threats}
+              setData={createFirebaseSetter("threats", setThreats)}
+              title="KATALOG ANCAMAN"
+              prefix="THR"
+              color={COLORS.red}
               role={role}
+              playUISound={playUISound}
+              addLog={addLog}
             />
           )}
-          {activeTab === "audit" && <AuditTrail auditLogs={auditLogs} />}
+          {activeTab === "controls" && (
+            <GenericManager
+              data={controls}
+              setData={createFirebaseSetter("controls", setControls)}
+              title="PROSEDUR KONTROL MITIGASI"
+              prefix="CTRL"
+              color={COLORS.green}
+              role={role}
+              playUISound={playUISound}
+              addLog={addLog}
+            />
+          )}
+          {activeTab === "risks" && (
+            <RiskManager
+              risks={risks}
+              setRisks={createFirebaseSetter("risks", setRisks)}
+              controls={controls}
+              setControls={createFirebaseSetter("controls", setControls)}
+              role={role}
+              playUISound={playUISound}
+              addLog={addLog}
+            />
+          )}
           {activeTab === "export" && (
             <ExportCenter
               assets={assets}
+              vulnerabilities={vulnerabilities}
               threats={threats}
-              assessments={assessments}
+              controls={controls}
+              impactMap={impactMap}
+              threatImpMap={threatImpMap}
+              controlValMap={controlValMap}
+              playUISound={playUISound}
+              addLog={addLog}
             />
+          )}
+          {activeTab === "history" && (
+            <HistoryLog logs={logs} playUISound={playUISound} />
           )}
         </main>
       </div>
@@ -661,52 +707,45 @@ export default function App() {
 // 5. VIEW COMPONENTS
 // ==============================================================================
 
-function DashboardOverview({ assets, threats, assessments }) {
-  const criticalCount = assessments.filter(
-    (a) => a.level.label === "CRITICAL",
-  ).length;
+function DashboardOverview({
+  assets,
+  vulnerabilities,
+  threats,
+  controls,
+  risks,
+  impactMap,
+  threatImpMap,
+  controlValMap,
+}) {
+  const totalAssetValue = assets.reduce(
+    (sum, asset) => sum + (asset.value || 0),
+    0,
+  );
+  const criticalRisks =
+    risks?.filter((r) => r.likelihood * r.impact >= 15).length || 0;
 
-  const totalIncidents = assessments.length;
+  const assetCategoryGroups = assets.reduce((acc, asset) => {
+    acc[asset.category] = (acc[asset.category] || 0) + (asset.value || 0);
+    return acc;
+  }, {});
+  const assetPieData = Object.keys(assetCategoryGroups).map((key) => ({
+    name: key,
+    value: assetCategoryGroups[key],
+  }));
+  const PIE_COLORS = [
+    COLORS.red,
+    COLORS.primary,
+    COLORS.yellow,
+    COLORS.green,
+    COLORS.blue,
+  ];
 
-  const totalAssetValue = assets.reduce((sum, asset) => sum + asset.value, 0);
-
-  // =========================================================================
-  // DATA DINAMIS 1: DONUT CHART (Severity)
-  // =========================================================================
-  const totalRisks = assessments.length;
-  const riskSeverityData = [
-    { name: "CRITICAL", value: criticalCount },
-    {
-      name: "HIGH",
-      value: assessments.filter((a) => a.level.label === "HIGH").length,
-    },
-    {
-      name: "MEDIUM",
-      value: assessments.filter((a) => a.level.label === "MEDIUM").length,
-    },
-    {
-      name: "LOW",
-      value: assessments.filter((a) => a.level.label === "LOW").length,
-    },
-  ].filter((item) => item.value > 0);
-
-  // =========================================================================
-  // DATA DINAMIS 2: BAR CHART (Top Vulnerable Assets)
-  // =========================================================================
-  const assetRiskCounts = {};
-  assessments.forEach((a) => {
-    if (!assetRiskCounts[a.asset]) {
-      assetRiskCounts[a.asset] = 0;
-    }
-    assetRiskCounts[a.asset] += 1;
-  });
-
-  const dynamicAssetData = Object.keys(assetRiskCounts)
-    .map((key) => ({
-      name: key,
-      value: assetRiskCounts[key],
+  const threatBarData = [...threats]
+    .map((t) => ({
+      name: t.name.length > 25 ? t.name.substring(0, 25) + "..." : t.name,
+      score: threatImpMap[t.id] || 0,
     }))
-    .sort((a, b) => b.value - a.value)
+    .sort((a, b) => b.score - a.score)
     .slice(0, 5);
 
   return (
@@ -714,753 +753,1425 @@ function DashboardOverview({ assets, threats, assessments }) {
       <div className="header-section">
         <h1
           className="main-title glitch-text"
-          data-text="GLOBAL COMMAND & CONTROL"
+          data-text="SMA COMMAND & CONTROL"
         >
-          GLOBAL COMMAND & CONTROL
+          SMA COMMAND & CONTROL
         </h1>
         <p className="sub-title">
-          Real-time risk telemetry, threat distribution, and asset valuation.
+          Pemantauan Metrik Keamanan & Operasional Tambang Waktu Nyata.
         </p>
       </div>
 
       <div className="kpi-grid">
         <div className="kpi-card glow-effect">
-          <span className="kpi-label">TOTAL ASSET VALUE</span>
-          <span className="kpi-value neon-blue">
-            {formatMoney(totalAssetValue)}
+          <span className="kpi-label">TOTAL VALUASI ASET</span>
+          <span className="kpi-value primary-color">
+            {formatIDR(totalAssetValue)}
           </span>
         </div>
-        <div className="kpi-card glow-effect">
-          <span className="kpi-label">CRITICAL RISKS</span>
-          <span className="kpi-value text-red">{criticalCount}</span>
+        <div
+          className="kpi-card glow-effect"
+          style={{ borderLeftColor: COLORS.primary }}
+        >
+          <span className="kpi-label">KERENTANAN TERDAFTAR</span>
+          <span className="kpi-value" style={{ color: COLORS.primary }}>
+            {vulnerabilities.length} Area Kritis
+          </span>
         </div>
-        <div className="kpi-card glow-effect">
-          <span className="kpi-label">KNOWN THREATS</span>
-          <span className="kpi-value text-yellow">{threats.length}</span>
+        <div
+          className="kpi-card glow-effect"
+          style={{ borderLeftColor: COLORS.red }}
+        >
+          <span className="kpi-label">RISIKO KRITIS</span>
+          <span className="kpi-value" style={{ color: COLORS.red }}>
+            {criticalRisks} Skenario
+          </span>
         </div>
-        <div className="kpi-card glow-effect">
-          <span className="kpi-label">TOTAL INCIDENTS</span>
-          <span className="kpi-value text-green">{totalIncidents} Logs</span>
+        <div
+          className="kpi-card glow-effect"
+          style={{ borderLeftColor: COLORS.green }}
+        >
+          <span className="kpi-label">KONTROL MITIGASI</span>
+          <span className="kpi-value" style={{ color: COLORS.green }}>
+            {controls.length} Prosedur
+          </span>
         </div>
       </div>
 
-      <div className="dashboard-grid layout-3-col">
-        {/* AREA CHART: Monthly Threat Telemetry */}
-        <div className="dashboard-card col-span-2 glow-effect">
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 2fr",
+          gap: "25px",
+          marginBottom: "25px",
+        }}
+      >
+        <div
+          className="dashboard-card glow-effect"
+          style={{ display: "flex", flexDirection: "column" }}
+        >
           <div className="card-header">
-            <h3 className="card-title">Monthly Threat Telemetry</h3>
+            <h3 className="card-title">Distribusi Kategori Aset</h3>
           </div>
-          <p
+          <div
+            className="chart-wrapper"
             style={{
-              fontSize: "11px",
-              color: "#888",
-              marginTop: "-10px",
-              marginBottom: "10px",
+              flexGrow: 1,
+              minHeight: "300px",
+              display: "flex",
+              alignItems: "center",
             }}
           >
-            Volume of detected attacks: Firewalls Blocked vs System Breaches.
-          </p>
-          <div className="chart-wrapper">
-            <ResponsiveContainer width="100%" height={230}>
-              <AreaChart
-                data={threatTelemetryData}
-                margin={{ top: 10, right: 20, left: -20, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="colorBlocked" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="5%"
-                      stopColor={COLORS.neonBlue}
-                      stopOpacity={0.6}
-                    />
-                    <stop
-                      offset="95%"
-                      stopColor={COLORS.neonBlue}
-                      stopOpacity={0}
-                    />
-                  </linearGradient>
-                  <linearGradient
-                    id="colorBreached"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop
-                      offset="5%"
-                      stopColor={COLORS.red}
-                      stopOpacity={0.6}
-                    />
-                    <stop offset="95%" stopColor={COLORS.red} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="rgba(255,255,255,0.05)"
-                />
-                <XAxis
-                  dataKey="month"
-                  tick={{ fill: "#888", fontSize: 12 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fill: "#888", fontSize: 12 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <RechartsTooltip
-                  contentStyle={{
-                    backgroundColor: "#0a0c12",
-                    border: "1px solid #333",
-                    color: "#fff",
-                    borderRadius: "6px",
-                  }}
-                />
-                <Legend
-                  verticalAlign="top"
-                  height={36}
-                  wrapperStyle={{ fontSize: "12px", color: "#ccc" }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="blocked"
-                  name="Attacks Blocked"
-                  stroke={COLORS.neonBlue}
-                  strokeWidth={3}
-                  fillOpacity={1}
-                  fill="url(#colorBlocked)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="breached"
-                  name="System Breaches"
-                  stroke={COLORS.red}
-                  strokeWidth={3}
-                  fillOpacity={1}
-                  fill="url(#colorBreached)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* DONUT CHART: Risk Severity Distribution */}
-        <div className="dashboard-card col-span-1 glow-effect">
-          <div className="card-header">
-            <h3 className="card-title">Risk Severity Distribution</h3>
-          </div>
-          <div className="chart-wrapper">
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={riskSeverityData}
+                  data={assetPieData}
                   cx="50%"
-                  cy="50%"
-                  innerRadius={55}
-                  outerRadius={80}
-                  paddingAngle={5}
+                  cy="45%"
+                  innerRadius={70}
+                  outerRadius={100}
+                  paddingAngle={3}
                   dataKey="value"
                   stroke="none"
                 >
-                  {riskSeverityData.map((entry, index) => (
+                  {assetPieData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={SEVERITY_COLORS[entry.name]}
+                      fill={PIE_COLORS[index % PIE_COLORS.length]}
                     />
                   ))}
                 </Pie>
                 <RechartsTooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload;
-                      const percentage =
-                        totalRisks > 0
-                          ? ((data.value / totalRisks) * 100).toFixed(1)
-                          : 0;
-                      return (
-                        <div
-                          style={{
-                            backgroundColor: "#030406",
-                            border: `1px solid ${COLORS.neonBlue}`,
-                            padding: "12px",
-                            borderRadius: "5px",
-                            color: COLORS.white,
-                            fontSize: "12px",
-                            fontFamily: "monospace",
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontWeight: "bold",
-                              marginBottom: "8px",
-                              color: SEVERITY_COLORS[data.name],
-                              borderBottom: "1px solid #333",
-                              paddingBottom: "4px",
-                            }}
-                          >
-                            {data.name} SEVERITY
-                          </div>
-                          <div style={{ marginBottom: "4px" }}>
-                            <span style={{ color: "#888" }}>
-                              Incidents Logged:
-                            </span>{" "}
-                            <span
-                              style={{ fontWeight: "bold", fontSize: "14px" }}
-                            >
-                              {data.value}
-                            </span>
-                          </div>
-                          <div>
-                            <span style={{ color: "#888" }}>
-                              Distribution Ratio:
-                            </span>{" "}
-                            <span style={{ fontWeight: "bold" }}>
-                              {percentage}%
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
+                  formatter={(value) => formatIDR(value)}
+                  contentStyle={{
+                    backgroundColor: "rgba(10,11,12,0.9)",
+                    border: `1px solid ${COLORS.primary}`,
+                    borderRadius: "4px",
+                    color: "#fff",
                   }}
                 />
                 <Legend
                   verticalAlign="bottom"
                   height={36}
                   iconType="circle"
-                  wrapperStyle={{
-                    color: COLORS.white,
-                    fontSize: "11px",
-                    fontWeight: "bold",
-                  }}
+                  wrapperStyle={{ color: COLORS.white, fontSize: "11px" }}
                 />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* BAR CHART: Top Vulnerable Assets */}
-        <div className="dashboard-card col-span-1 glow-effect">
+        <div
+          className="dashboard-card glow-effect"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}
+        >
           <div className="card-header">
-            <h3 className="card-title">Top Vulnerable Assets</h3>
+            <h3 className="card-title">
+              Prioritas Ancaman Tertinggi (Top 5 Threats)
+            </h3>
           </div>
-          <div className="chart-wrapper">
-            <ResponsiveContainer width="100%" height={250}>
+          <p
+            style={{
+              fontSize: "11px",
+              color: "#888",
+              marginTop: "-10px",
+              marginBottom: "15px",
+            }}
+          >
+            Berdasarkan kalkulasi otomatis dari Matriks 2 (Kerentanan × Dampak
+            Aset).
+          </p>
+          <div
+            className="chart-wrapper"
+            style={{ flexGrow: 1, minHeight: "300px" }}
+          >
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={dynamicAssetData}
+                data={threatBarData}
                 layout="vertical"
-                margin={{ top: 0, right: 30, left: 10, bottom: 0 }}
+                margin={{ top: 10, right: 100, left: 10, bottom: 10 }}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  horizontal={false}
+                  horizontal={true}
+                  vertical={false}
                   stroke="rgba(255,255,255,0.05)"
                 />
-                <XAxis type="number" hide />
-                <YAxis
-                  dataKey="name"
-                  type="category"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 11, fill: "#ccc" }}
-                  width={90}
-                />
+                <XAxis type="number" hide domain={[0, "dataMax * 1.2"]} />
+                <YAxis dataKey="name" type="category" hide />
                 <RechartsTooltip
-                  cursor={{ fill: "rgba(255,255,255,0.05)" }}
-                  formatter={(value) => [value, "Logged Incidents"]}
+                  cursor={{ fill: "rgba(229,57,53,0.1)" }}
+                  formatter={(value) => formatNilai(value)}
                   contentStyle={{
-                    backgroundColor: "rgba(0,0,0,0.9)",
+                    backgroundColor: "rgba(10,11,12,0.9)",
                     border: `1px solid ${COLORS.red}`,
+                    borderRadius: "4px",
                     color: "#fff",
-                    borderRadius: "6px",
                   }}
                 />
                 <Bar
-                  dataKey="value"
+                  dataKey="score"
                   fill={COLORS.red}
-                  barSize={12}
+                  barSize={35}
                   radius={[0, 4, 4, 0]}
                 >
                   <LabelList
-                    dataKey="value"
-                    position="right"
+                    dataKey="name"
+                    position="insideLeft"
                     style={{
                       fill: COLORS.white,
-                      fontSize: 10,
+                      fontSize: 12,
+                      fontWeight: "bold",
+                      paddingLeft: "10px",
+                    }}
+                  />
+                  <LabelList
+                    dataKey="score"
+                    position="right"
+                    style={{
+                      fill: COLORS.red,
+                      fontSize: 13,
                       fontWeight: "bold",
                     }}
+                    formatter={(val) => formatNilai(val)}
                   />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
-
-        {/* TABLE: Vulnerability Registry */}
-        <div className="dashboard-card col-span-2 glow-effect">
-          <div className="card-header">
-            <h3 className="card-title">Vulnerability Registry</h3>
-          </div>
-          <div
-            className="table-container"
-            style={{ height: "250px", overflowY: "auto" }}
-          >
-            <table className="data-table small-table">
-              <thead>
-                <tr>
-                  <th>Log ID</th>
-                  <th>Affected Asset</th>
-                  <th>Identified Threat</th>
-                  <th>Mitigation Control</th>
-                  <th>Severity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {assessments
-                  .slice()
-                  .reverse()
-                  .map((a, i) => (
-                    <tr key={i}>
-                      <td
-                        style={{
-                          color: COLORS.neonBlue,
-                          fontFamily: "monospace",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        {a.id}
-                      </td>
-                      <td>{a.asset}</td>
-                      <td>{a.threat}</td>
-                      <td style={{ color: "#888" }}>{a.control}</td>
-                      <td>
-                        <span className={`status-pill ${a.level.class}`}>
-                          {a.level.label}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
     </div>
   );
 }
 
-// Fitur Pemodelan Data & Kalkulasi Transparan
-function RiskAssessmentWorkflow({
+// ---------------------------------------------------------
+// MATRIX ENGINE
+// ---------------------------------------------------------
+function MatrixEngine({
   assets,
+  vulnerabilities,
   threats,
-  assessments,
-  setAssessments,
-  logAudit,
+  controls,
+  matrix1Scores,
+  matrix2Scores,
+  matrix3Scores,
+  impactMap,
+  threatImpMap,
+  controlValMap,
   role,
+  playUISound,
+  addLog,
 }) {
-  const [formData, setFormData] = useState({
-    assetId: "",
-    vuln: "",
-    threatId: "",
-    l: 3,
-    i: 4,
-    control: "",
-    effect: 50,
-  });
+  const isEditable = role !== "viewer";
 
-  const handleInputChange = (e) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const toggleScoreDirect = (
+    matrixNodePath,
+    rowId,
+    colId,
+    currentScore,
+    matrixName,
+  ) => {
+    if (!isEditable) return;
+    playUISound("click");
+    const nextScore = ((currentScore || 0) + 1) % 4;
 
-  const executeAssessment = (e) => {
-    e.preventDefault();
-    if (
-      !formData.assetId ||
-      !formData.vuln ||
-      !formData.threatId ||
-      !formData.control
-    )
-      return alert(
-        "DATA INTEGRITY ERROR: Seluruh form wajb diisi untuk memetakan relasi.",
-      );
-    if (formData.l < 1 || formData.l > 5 || formData.i < 1 || formData.i > 5)
-      return alert(
-        "VALIDATION ERROR: Skala Likelihood dan Impact harus bernilai 1 hingga 5.",
-      );
-    if (formData.effect < 0 || formData.effect > 100)
-      return alert(
-        "VALIDATION ERROR: Persentase efektivitas kontrol harus berada di antara 0% - 100%.",
-      );
+    try {
+      set(ref(db, `${matrixNodePath}/${rowId}/${colId}`), nextScore)
+        .then(() => {
+          console.log(`[SUKSES] Korelasi ${matrixName} tersimpan.`);
+        })
+        .catch((error) => {
+          console.error(`[ERROR] Firebase menolak data ${matrixName}:`, error);
+          alert(
+            "Gagal sinkronisasi data dengan server! Pastikan koneksi stabil.",
+          );
+        });
 
-    const rawScore = formData.l * formData.i;
-    const mitigatedScore = (rawScore * (1 - formData.effect / 100)).toFixed(1);
-
-    let level = { label: "LOW", class: "good" };
-    if (mitigatedScore >= 15) level = { label: "CRITICAL", class: "danger" };
-    else if (mitigatedScore >= 10) level = { label: "HIGH", class: "danger" };
-    else if (mitigatedScore >= 5) level = { label: "MEDIUM", class: "warning" };
-
-    const selectedAsset = assets.find((a) => a.id === formData.assetId);
-    const selectedThreat = threats.find((t) => t.id === formData.threatId);
-
-    const newAssessment = {
-      id: `RSK-${Math.floor(Math.random() * 10000)}`,
-      asset: selectedAsset.name,
-      vuln: formData.vuln,
-      threat: selectedThreat.name,
-      l: Number(formData.l),
-      i: Number(formData.i),
-      control: formData.control,
-      effect: Number(formData.effect),
-      score: mitigatedScore,
-      level,
-      time: new Date().toLocaleString(),
-    };
-
-    setAssessments([...assessments, newAssessment]);
-    logAudit(
-      `Executed Risk Assessment for [${newAssessment.asset}]. Final Score: ${mitigatedScore} (${level.label})`,
-      role,
-    );
-    alert(
-      `Assessment diproses! \nInherent Risk: ${rawScore}\nResidual Risk: ${mitigatedScore}\nStatus: ${level.label}`,
-    );
-    setFormData({
-      assetId: "",
-      vuln: "",
-      threatId: "",
-      l: 3,
-      i: 4,
-      control: "",
-      effect: 50,
-    });
-  };
-
-  return (
-    <div className="dashboard-content animate-fade-in">
-      <div className="header-section">
-        <h1 className="main-title">RISK ASSESSMENT ENGINE</h1>
-        <p className="sub-title">
-          End-to-end mapping: Asset ➔ Vulnerability ➔ Threat ➔ Mitigation.
-        </p>
-      </div>
-
-      <form
-        onSubmit={executeAssessment}
-        className="dashboard-card glow-effect form-grid"
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "25px" }}
-      >
-        <div className="input-group">
-          <label>1. Target Asset (Relation)</label>
-          <select
-            name="assetId"
-            value={formData.assetId}
-            onChange={handleInputChange}
-            className="cyber-select"
-            required
-          >
-            <option value="" disabled>
-              -- Select Asset --
-            </option>
-            {assets.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} ({formatMoney(a.value)})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="input-group">
-          <label>2. Identified Vulnerability</label>
-          <input
-            type="text"
-            name="vuln"
-            value={formData.vuln}
-            onChange={handleInputChange}
-            className="cyber-input"
-            placeholder="e.g. Unpatched OS"
-            required
-          />
-        </div>
-        <div className="input-group" style={{ gridColumn: "1 / -1" }}>
-          <label>3. Threat Actor / Vector (Relation)</label>
-          <select
-            name="threatId"
-            value={formData.threatId}
-            onChange={handleInputChange}
-            className="cyber-select"
-            required
-          >
-            <option value="" disabled>
-              -- Select Threat --
-            </option>
-            {threats.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name} (Prob: {t.probability})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="input-group">
-          <label>4. Inherent Likelihood (Scale 1-5)</label>
-          <input
-            type="number"
-            name="l"
-            value={formData.l}
-            onChange={handleInputChange}
-            className="cyber-input"
-            min="1"
-            max="5"
-            required
-          />
-        </div>
-        <div className="input-group">
-          <label>5. Inherent Impact (Scale 1-5)</label>
-          <input
-            type="number"
-            name="i"
-            value={formData.i}
-            onChange={handleInputChange}
-            className="cyber-input"
-            min="1"
-            max="5"
-            required
-          />
-        </div>
-        <div className="input-group">
-          <label>6. Mitigation Control Plan</label>
-          <input
-            type="text"
-            name="control"
-            value={formData.control}
-            onChange={handleInputChange}
-            className="cyber-input"
-            placeholder="e.g. Implement MFA"
-            required
-          />
-        </div>
-        <div className="input-group">
-          <label>7. Control Effectiveness (0-100%)</label>
-          <input
-            type="number"
-            name="effect"
-            value={formData.effect}
-            onChange={handleInputChange}
-            className="cyber-input"
-            min="0"
-            max="100"
-            required
-          />
-        </div>
-
-        <div style={{ gridColumn: "1 / -1" }}>
-          <div className="ai-terminal" style={{ marginBottom: "20px" }}>
-            <span className="terminal-prefix">SYS_AI_CALC:&gt;</span>
-            <span className="typewriter">
-              Residual Risk Score = (Likelihood × Impact) × (1 - (Control
-              Effectiveness / 100))
-            </span>
-          </div>
-          <button
-            type="submit"
-            className="action-btn add-btn"
-            style={{ width: "100%", padding: "15px", fontSize: "16px" }}
-          >
-            CALCULATE & INJECT TO MATRIX
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
-
-// Fitur Visualisasi Matriks & Prioritas
-function MatrixHeatmap({ assessments }) {
-  const [hoveredData, setHoveredData] = useState(null);
-
-  const renderCells = () => {
-    let cells = [];
-    for (let l = 5; l >= 1; l--) {
-      for (let i = 1; i <= 5; i++) {
-        const cellRisks = assessments.filter((a) => a.l === l && a.i === i);
-        const score = l * i;
-        let cellClass = "matrix-cell matrix-low";
-        if (score >= 15) cellClass = "matrix-cell matrix-critical";
-        else if (score >= 10) cellClass = "matrix-cell matrix-high";
-        else if (score >= 5) cellClass = "matrix-cell matrix-medium";
-
-        cells.push(
-          <div key={`${l}-${i}`} className={cellClass}>
-            <span
-              style={{
-                position: "absolute",
-                opacity: 0.3,
-                fontSize: "10px",
-                bottom: "5px",
-                right: "5px",
-              }}
-            >
-              L{l}:I{i}
-            </span>
-            {cellRisks.map((risk, idx) => (
-              <div
-                key={idx}
-                className="risk-dot"
-                onMouseEnter={() => setHoveredData(risk)}
-                style={{
-                  transform: `translate(${Math.random() * 20 - 10}px, ${Math.random() * 20 - 10}px)`,
-                }}
-              ></div>
-            ))}
-          </div>,
+      if (addLog) {
+        addLog(
+          "MATRIX",
+          `Pembaruan Skor ${matrixName}`,
+          `Mengubah korelasi antara baris [${rowId}] dan kolom [${colId}] menjadi ${nextScore}.`,
         );
       }
+    } catch (e) {
+      console.error("Kesalahan internal saat manipulasi matriks:", e);
     }
-    return cells;
+  };
+
+  const EditableCell = ({ score, colorStr, onToggle, isEditable }) => {
+    if (!isEditable) {
+      return (
+        <span
+          style={{
+            color: score > 0 ? colorStr : "#555",
+            fontWeight: score > 0 ? "bold" : "normal",
+          }}
+        >
+          {score}
+        </span>
+      );
+    }
+
+    const hoverBg = colorStr + "33";
+    const idleBg = score > 0 ? colorStr + "1A" : "rgba(0,0,0,0.2)";
+
+    return (
+      <div
+        onClick={onToggle}
+        onMouseEnter={(e) => {
+          playUISound("hover");
+          e.currentTarget.style.transform = "scale(1.15)";
+          e.currentTarget.style.backgroundColor = hoverBg;
+          e.currentTarget.style.borderColor = colorStr;
+          e.currentTarget.style.boxShadow = `0 0 10px ${colorStr}66`;
+          e.currentTarget.style.color = "#fff";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "scale(1)";
+          e.currentTarget.style.backgroundColor = idleBg;
+          e.currentTarget.style.borderColor = score > 0 ? colorStr : "#444";
+          e.currentTarget.style.boxShadow = "none";
+          e.currentTarget.style.color = score > 0 ? colorStr : "#777";
+        }}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minWidth: "40px",
+          height: "32px",
+          borderRadius: "4px",
+          backgroundColor: idleBg,
+          border: `1px ${score > 0 ? "solid" : "dashed"} ${score > 0 ? colorStr : "#444"}`,
+          color: score > 0 ? colorStr : "#777",
+          cursor: "pointer",
+          fontWeight: "bold",
+          transition: "all 0.2s ease",
+          userSelect: "none",
+          margin: "0 auto",
+        }}
+        title="Klik kotak ini untuk mengubah nilai korelasi (0, 1, 2, 3)"
+      >
+        {score}
+      </div>
+    );
   };
 
   return (
     <div className="dashboard-content animate-fade-in">
       <div className="header-section">
-        <h1 className="main-title">SPATIAL RISK MATRIX</h1>
-        <p className="sub-title">
-          5x5 Interactive Threat Prioritization Heatmap.
+        <h1 className="main-title">MESIN MATRIKS 3-TAHAP</h1>
+        <p className="sub-title" style={{ color: COLORS.primary }}>
+          💡 <strong>PANDUAN INTERAKTIF:</strong> Klik pada kotak bernomor di
+          dalam tabel untuk mengubah nilai korelasi mitigasi (0-3).
         </p>
       </div>
 
       <div
+        className="dashboard-card full-width-card glow-effect"
+        style={{ marginBottom: "25px", padding: "20px 0" }}
+      >
+        <div className="card-header" style={{ padding: "0 20px" }}>
+          <h3 className="card-title" style={{ color: COLORS.primary }}>
+            MATRIKS 1: ASET / KERENTANAN
+          </h3>
+        </div>
+        <div
+          className="table-container"
+          style={{ overflowX: "auto", padding: "0 20px" }}
+        >
+          <table
+            className="data-table cyber-grid"
+            style={{ borderCollapse: "collapse", width: "100%" }}
+          >
+            <thead>
+              <tr>
+                <th style={{ minWidth: "220px", padding: "12px" }}>
+                  Kerentanan ↓ / Aset →
+                </th>
+                {assets.map((a) => (
+                  <th
+                    key={a.id}
+                    style={{
+                      textAlign: "center",
+                      minWidth: "120px",
+                      maxWidth: "150px",
+                      padding: "12px",
+                      verticalAlign: "middle",
+                      lineHeight: "1.4",
+                    }}
+                  >
+                    {a.name} <br />
+                    <span style={{ color: "#888", fontSize: "10px" }}>
+                      {formatIDR(a.value)}
+                    </span>
+                  </th>
+                ))}
+                <th
+                  style={{
+                    color: COLORS.primary,
+                    background: "rgba(255,152,0,0.05)",
+                    textAlign: "center",
+                    minWidth: "150px",
+                    padding: "12px",
+                    verticalAlign: "middle",
+                  }}
+                >
+                  Agregat (Dampak)
+                </th>
+              </tr>
+              <tr style={{ backgroundColor: "rgba(255, 152, 0, 0.15)" }}>
+                <td
+                  style={{
+                    fontStyle: "italic",
+                    color: COLORS.primary,
+                    padding: "12px",
+                    borderBottom: "1px solid rgba(255,152,0,0.3)",
+                  }}
+                >
+                  Input Nilai Aset &rarr;
+                </td>
+                {assets.map((a) => (
+                  <td
+                    key={a.id}
+                    style={{
+                      textAlign: "center",
+                      fontWeight: "bold",
+                      padding: "12px",
+                      color: COLORS.primary,
+                      borderBottom: "1px solid rgba(255,152,0,0.3)",
+                    }}
+                  >
+                    {formatIDR(a.value)}
+                  </td>
+                ))}
+                <td
+                  style={{
+                    textAlign: "center",
+                    fontSize: "11px",
+                    padding: "12px",
+                    color: "#aaa",
+                    borderBottom: "1px solid rgba(255,152,0,0.3)",
+                  }}
+                >
+                  Σ (nilai aset × <br /> kerentanan)
+                </td>
+              </tr>
+            </thead>
+            <tbody>
+              {vulnerabilities.map((v) => (
+                <tr key={v.id}>
+                  <td
+                    style={{
+                      fontWeight: "bold",
+                      padding: "12px",
+                      borderBottom: "1px solid rgba(255,255,255,0.05)",
+                      verticalAlign: "middle",
+                    }}
+                  >
+                    {v.name}
+                  </td>
+                  {assets.map((a) => {
+                    const score = matrix1Scores[v.id]?.[a.id] || 0;
+                    return (
+                      <td
+                        key={a.id}
+                        style={{
+                          textAlign: "center",
+                          padding: "12px",
+                          borderBottom: "1px solid rgba(255,255,255,0.05)",
+                          verticalAlign: "middle",
+                        }}
+                      >
+                        <EditableCell
+                          score={score}
+                          colorStr={COLORS.primary}
+                          onToggle={() =>
+                            toggleScoreDirect(
+                              "matrix1Scores",
+                              v.id,
+                              a.id,
+                              score,
+                              "Matriks 1",
+                            )
+                          }
+                          isEditable={isEditable}
+                        />
+                      </td>
+                    );
+                  })}
+                  <td
+                    style={{
+                      fontWeight: "bold",
+                      color: COLORS.primary,
+                      textAlign: "center",
+                      padding: "12px",
+                      background: "rgba(255,152,0,0.05)",
+                      borderBottom: "1px solid rgba(255,255,255,0.05)",
+                      verticalAlign: "middle",
+                    }}
+                  >
+                    {formatNilai(impactMap[v.id])}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div
+        className="dashboard-card full-width-card glow-effect"
         style={{
-          display: "flex",
-          gap: "30px",
-          alignItems: "flex-start",
-          marginTop: "30px",
+          marginBottom: "25px",
+          borderLeftColor: COLORS.red,
+          padding: "20px 0",
         }}
       >
-        <div className="matrix-wrapper">
-          <div className="matrix-label-y">LIKELIHOOD (1-5)</div>
-          <div className="matrix-grid">{renderCells()}</div>
-          <div className="matrix-label-x">IMPACT (1-5)</div>
+        <div className="card-header" style={{ padding: "0 20px" }}>
+          <h3 className="card-title" style={{ color: COLORS.red }}>
+            MATRIKS 2: ANCAMAN / KERENTANAN
+          </h3>
         </div>
-
-        <div className="dashboard-card glow-effect" style={{ flex: 1 }}>
-          <h3 className="card-title">Telemetry Drill-down</h3>
-          <p style={{ fontSize: "12px", color: "#888", marginBottom: "20px" }}>
-            Arahkan kursor ke titik putih (Risk Dot) pada matriks untuk membedah
-            data telemetri secara spesifik.
-          </p>
-
-          {hoveredData ? (
-            <div
-              style={{
-                background: "rgba(0,0,0,0.5)",
-                padding: "20px",
-                borderLeft: `4px solid ${hoveredData.level.class === "danger" ? "#ff3333" : hoveredData.level.class === "warning" ? "#fee440" : "#00f3ff"}`,
-                fontFamily: "monospace",
-              }}
-            >
-              <div style={{ marginBottom: "10px" }}>
-                <strong style={{ color: "#888" }}>Asset:</strong>{" "}
-                <span style={{ color: "#fff" }}>{hoveredData.asset}</span>
-              </div>
-              <div style={{ marginBottom: "10px" }}>
-                <strong style={{ color: "#888" }}>Vulnerability:</strong>{" "}
-                <span style={{ color: "#fff" }}>{hoveredData.vuln}</span>
-              </div>
-              <div style={{ marginBottom: "10px" }}>
-                <strong style={{ color: "#888" }}>Threat Vector:</strong>{" "}
-                <span style={{ color: "#fff" }}>{hoveredData.threat}</span>
-              </div>
-              <hr style={{ border: "1px dashed #333", margin: "15px 0" }} />
-              <div style={{ marginBottom: "10px" }}>
-                <strong style={{ color: "#888" }}>Mitigation Control:</strong>{" "}
-                <span style={{ color: "#00f5d4" }}>
-                  {hoveredData.control} ({hoveredData.effect}% Effective)
-                </span>
-              </div>
-              <div style={{ marginTop: "20px" }}>
-                <strong style={{ color: "#888", marginRight: "10px" }}>
-                  Final Residual Score:
-                </strong>
-                <span
-                  className={`status-pill ${hoveredData.level.class}`}
-                  style={{ fontSize: "14px" }}
+        <div
+          className="table-container"
+          style={{ overflowX: "auto", padding: "0 20px" }}
+        >
+          <table
+            className="data-table cyber-grid"
+            style={{ borderCollapse: "collapse", width: "100%" }}
+          >
+            <thead>
+              <tr>
+                <th style={{ minWidth: "220px", padding: "12px" }}>
+                  Ancaman ↓ / Kerentanan →
+                </th>
+                {vulnerabilities.map((v) => (
+                  <th
+                    key={v.id}
+                    style={{
+                      textAlign: "center",
+                      minWidth: "120px",
+                      maxWidth: "150px",
+                      padding: "12px",
+                      verticalAlign: "middle",
+                      lineHeight: "1.4",
+                    }}
+                  >
+                    {v.name}
+                  </th>
+                ))}
+                <th
+                  style={{
+                    color: COLORS.red,
+                    background: "rgba(229,57,53,0.05)",
+                    textAlign: "center",
+                    minWidth: "150px",
+                    padding: "12px",
+                    verticalAlign: "middle",
+                  }}
                 >
-                  {hoveredData.score} - {hoveredData.level.label}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="ai-terminal">
-              <span className="typewriter">Awaiting target selection...</span>
-            </div>
-          )}
+                  Tingkat Ancaman
+                </th>
+              </tr>
+              <tr style={{ backgroundColor: "rgba(229, 57, 53, 0.15)" }}>
+                <td
+                  style={{
+                    fontStyle: "italic",
+                    color: COLORS.red,
+                    padding: "12px",
+                    borderBottom: "1px solid rgba(229,57,53,0.3)",
+                  }}
+                >
+                  Input Agregat Dampak &rarr;
+                </td>
+                {vulnerabilities.map((v) => (
+                  <td
+                    key={v.id}
+                    style={{
+                      textAlign: "center",
+                      fontWeight: "bold",
+                      padding: "12px",
+                      color: COLORS.red,
+                      borderBottom: "1px solid rgba(229,57,53,0.3)",
+                    }}
+                  >
+                    {formatNilai(impactMap[v.id])}
+                  </td>
+                ))}
+                <td
+                  style={{
+                    textAlign: "center",
+                    fontSize: "11px",
+                    padding: "12px",
+                    color: "#aaa",
+                    borderBottom: "1px solid rgba(229,57,53,0.3)",
+                  }}
+                >
+                  Σ (dampak × <br /> nilai ancaman)
+                </td>
+              </tr>
+            </thead>
+            <tbody>
+              {threats.map((t) => (
+                <tr key={t.id}>
+                  <td
+                    style={{
+                      fontWeight: "bold",
+                      padding: "12px",
+                      borderBottom: "1px solid rgba(255,255,255,0.05)",
+                      verticalAlign: "middle",
+                    }}
+                  >
+                    {t.name}
+                  </td>
+                  {vulnerabilities.map((v) => {
+                    const score = matrix2Scores[t.id]?.[v.id] || 0;
+                    return (
+                      <td
+                        key={v.id}
+                        style={{
+                          textAlign: "center",
+                          padding: "12px",
+                          borderBottom: "1px solid rgba(255,255,255,0.05)",
+                          verticalAlign: "middle",
+                        }}
+                      >
+                        <EditableCell
+                          score={score}
+                          colorStr={COLORS.red}
+                          onToggle={() =>
+                            toggleScoreDirect(
+                              "matrix2Scores",
+                              t.id,
+                              v.id,
+                              score,
+                              "Matriks 2",
+                            )
+                          }
+                          isEditable={isEditable}
+                        />
+                      </td>
+                    );
+                  })}
+                  <td
+                    style={{
+                      fontWeight: "bold",
+                      color: COLORS.red,
+                      textAlign: "center",
+                      padding: "12px",
+                      background: "rgba(229,57,53,0.05)",
+                      borderBottom: "1px solid rgba(255,255,255,0.05)",
+                      verticalAlign: "middle",
+                    }}
+                  >
+                    {formatNilai(threatImpMap[t.id])}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div
+        className="dashboard-card full-width-card glow-effect"
+        style={{ borderLeftColor: COLORS.green, padding: "20px 0" }}
+      >
+        <div className="card-header" style={{ padding: "0 20px" }}>
+          <h3 className="card-title" style={{ color: COLORS.green }}>
+            MATRIKS 3: KONTROL / ANCAMAN
+          </h3>
+        </div>
+        <div
+          className="table-container"
+          style={{ overflowX: "auto", padding: "0 20px" }}
+        >
+          <table
+            className="data-table cyber-grid"
+            style={{ borderCollapse: "collapse", width: "100%" }}
+          >
+            <thead>
+              <tr>
+                <th style={{ minWidth: "220px", padding: "12px" }}>
+                  Kontrol ↓ / Ancaman →
+                </th>
+                {threats.map((t) => (
+                  <th
+                    key={t.id}
+                    style={{
+                      textAlign: "center",
+                      minWidth: "120px",
+                      maxWidth: "150px",
+                      padding: "12px",
+                      verticalAlign: "middle",
+                      lineHeight: "1.4",
+                    }}
+                  >
+                    {t.name}
+                  </th>
+                ))}
+                <th
+                  style={{
+                    color: COLORS.green,
+                    background: "rgba(76,175,80,0.05)",
+                    textAlign: "center",
+                    minWidth: "150px",
+                    padding: "12px",
+                    verticalAlign: "middle",
+                  }}
+                >
+                  Efektivitas Kontrol
+                </th>
+              </tr>
+              <tr style={{ backgroundColor: "rgba(76, 175, 80, 0.15)" }}>
+                <td
+                  style={{
+                    fontStyle: "italic",
+                    color: COLORS.green,
+                    padding: "12px",
+                    borderBottom: "1px solid rgba(76,175,80,0.3)",
+                  }}
+                >
+                  Input Tingkat Ancaman &rarr;
+                </td>
+                {threats.map((t) => (
+                  <td
+                    key={t.id}
+                    style={{
+                      textAlign: "center",
+                      fontWeight: "bold",
+                      padding: "12px",
+                      color: COLORS.green,
+                      borderBottom: "1px solid rgba(76,175,80,0.3)",
+                    }}
+                  >
+                    {formatNilai(threatImpMap[t.id])}
+                  </td>
+                ))}
+                <td
+                  style={{
+                    textAlign: "center",
+                    fontSize: "11px",
+                    padding: "12px",
+                    color: "#aaa",
+                    borderBottom: "1px solid rgba(76,175,80,0.3)",
+                  }}
+                >
+                  Σ (ancaman ×<br /> kontrol)
+                </td>
+              </tr>
+            </thead>
+            <tbody>
+              {controls.map((c) => (
+                <tr key={c.id}>
+                  <td
+                    style={{
+                      fontWeight: "bold",
+                      padding: "12px",
+                      borderBottom: "1px solid rgba(255,255,255,0.05)",
+                      verticalAlign: "middle",
+                    }}
+                  >
+                    {c.name}
+                  </td>
+                  {threats.map((t) => {
+                    const score = matrix3Scores[c.id]?.[t.id] || 0;
+                    return (
+                      <td
+                        key={t.id}
+                        style={{
+                          textAlign: "center",
+                          padding: "12px",
+                          borderBottom: "1px solid rgba(255,255,255,0.05)",
+                          verticalAlign: "middle",
+                        }}
+                      >
+                        <EditableCell
+                          score={score}
+                          colorStr={COLORS.green}
+                          onToggle={() =>
+                            toggleScoreDirect(
+                              "matrix3Scores",
+                              c.id,
+                              t.id,
+                              score,
+                              "Matriks 3",
+                            )
+                          }
+                          isEditable={isEditable}
+                        />
+                      </td>
+                    );
+                  })}
+                  <td
+                    style={{
+                      fontWeight: "bold",
+                      color: COLORS.green,
+                      textAlign: "center",
+                      padding: "12px",
+                      background: "rgba(76,175,80,0.05)",
+                      borderBottom: "1px solid rgba(255,255,255,0.05)",
+                      verticalAlign: "middle",
+                    }}
+                  >
+                    {formatNilai(controlValMap[c.id])}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   );
 }
 
-// Fitur CRUD
-function AssetManager({ assets, setAssets, logAudit, role }) {
-  const [newAsset, setNewAsset] = useState({
+// ---------------------------------------------------------
+// HALAMAN: MANAJEMEN RISIKO (LIKELIHOOD x IMPACT)
+// ---------------------------------------------------------
+function RiskManager({
+  risks,
+  setRisks,
+  controls,
+  setControls,
+  role,
+  playUISound,
+  addLog,
+}) {
+  const [newRisk, setNewRisk] = useState({
     name: "",
-    value: "",
-    category: "Hardware",
+    likelihood: 1,
+    impact: 1,
+    mitigation: "",
   });
+  const [editingId, setEditingId] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
 
-  const handleAddAsset = (e) => {
-    e.preventDefault();
-    if (role === "viewer")
-      return alert("ACCESS DENIED: Role Viewer tidak memiliki izin menulis.");
-    const assetToAdd = {
-      ...newAsset,
-      id: `AST-${Math.floor(Math.random() * 1000)}`,
-      value: parseFloat(newAsset.value),
-    };
-    setAssets([...assets, assetToAdd]);
-    logAudit(`Added new asset: ${assetToAdd.name}`, role);
-    setNewAsset({ name: "", value: "", category: "Hardware" });
+  const getRiskStatus = (likelihood, impact) => {
+    const score = likelihood * impact;
+    if (score <= 4) return { label: "RENDAH", color: "#4CAF50", score };
+    if (score <= 9) return { label: "SEDANG", color: "#FFC107", score };
+    if (score <= 14) return { label: "TINGGI", color: "#FF9800", score };
+    return { label: "KRITIS", color: "#E53935", score };
   };
-  const handleDelete = (id) => {
-    if (role !== "admin")
-      return alert("ACCESS DENIED: Hanya Admin yang dapat menghapus data.");
-    setAssets(assets.filter((a) => a.id !== id));
-    logAudit(`Deleted asset ID: ${id}`, role);
+
+  const handleAddRisk = (e) => {
+    e.preventDefault();
+    playUISound("alert");
+
+    const nextRiskIdNum =
+      risks.length > 0
+        ? Math.max(...risks.map((r) => parseInt(r.id.split("-")[1]) || 0)) + 1
+        : 1;
+    const formattedRiskId = `RSK-${nextRiskIdNum.toString().padStart(2, "0")}`;
+
+    const itemToAdd = {
+      id: formattedRiskId,
+      name: newRisk.name,
+      likelihood: parseInt(newRisk.likelihood),
+      impact: parseInt(newRisk.impact),
+      mitigation: newRisk.mitigation || "-",
+    };
+
+    setRisks([...risks, itemToAdd]);
+    addLog(
+      "CREATE",
+      "Skenario Risiko Baru",
+      `Risiko [${formattedRiskId}] didaftarkan dengan skala ${itemToAdd.likelihood}x${itemToAdd.impact}.`,
+    );
+
+    if (
+      newRisk.mitigation &&
+      newRisk.mitigation.trim() !== "" &&
+      newRisk.mitigation !== "-"
+    ) {
+      const isControlExists = controls.some(
+        (c) => c.name.toLowerCase() === newRisk.mitigation.trim().toLowerCase(),
+      );
+      if (!isControlExists) {
+        const nextCtrlIdNum =
+          controls.length > 0
+            ? Math.max(
+                ...controls.map((c) => parseInt(c.id.split("-")[1]) || 0),
+              ) + 1
+            : 1;
+        const formattedCtrlId = `CTRL-${nextCtrlIdNum.toString().padStart(2, "0")}`;
+        setControls([
+          ...controls,
+          { id: formattedCtrlId, name: newRisk.mitigation.trim() },
+        ]);
+        addLog(
+          "CREATE",
+          "Kontrol Otomatis Ditambahkan",
+          `Kontrol baru [${formattedCtrlId}] dibuat dari skenario Risiko [${formattedRiskId}].`,
+        );
+      }
+    }
+
+    setNewRisk({ name: "", likelihood: 1, impact: 1, mitigation: "" });
+  };
+
+  const handleEditClick = (risk) => {
+    playUISound("hover");
+    setEditingId(risk.id);
+    setEditFormData(risk);
+  };
+
+  const handleSaveEdit = () => {
+    playUISound("click");
+    setRisks(
+      risks.map((r) =>
+        r.id === editingId
+          ? {
+              ...editFormData,
+              likelihood: parseInt(editFormData.likelihood),
+              impact: parseInt(editFormData.impact),
+            }
+          : r,
+      ),
+    );
+
+    if (
+      editFormData.mitigation &&
+      editFormData.mitigation.trim() !== "" &&
+      editFormData.mitigation !== "-"
+    ) {
+      const isControlExists = controls.some(
+        (c) =>
+          c.name.toLowerCase() === editFormData.mitigation.trim().toLowerCase(),
+      );
+      if (!isControlExists) {
+        const nextCtrlIdNum =
+          controls.length > 0
+            ? Math.max(
+                ...controls.map((c) => parseInt(c.id.split("-")[1]) || 0),
+              ) + 1
+            : 1;
+        const formattedCtrlId = `CTRL-${nextCtrlIdNum.toString().padStart(2, "0")}`;
+        setControls([
+          ...controls,
+          { id: formattedCtrlId, name: editFormData.mitigation.trim() },
+        ]);
+        addLog(
+          "CREATE",
+          "Kontrol Otomatis",
+          `Kontrol mitigasi baru otomatis ditambahkan dari hasil edit risiko [${editingId}].`,
+        );
+      }
+    }
+
+    addLog(
+      "UPDATE",
+      "Skenario Risiko Diperbarui",
+      `Informasi risiko [${editingId}] telah diubah.`,
+    );
+    setEditingId(null);
+  };
+
+  const handleDeleteRisk = (id, name) => {
+    if (window.confirm(`Hapus Skenario Risiko '${name}' dari sistem?`)) {
+      playUISound("click");
+      setRisks(risks.filter((r) => r.id !== id));
+      addLog(
+        "DELETE",
+        "Skenario Risiko Dihapus",
+        `Risiko [${id}] dihapus dari sistem.`,
+      );
+    }
   };
 
   return (
     <div className="dashboard-content animate-fade-in">
       <div className="header-section">
-        <h1 className="main-title">ASSET REGISTRY</h1>
-        <p className="sub-title">Manage and evaluate organizational assets.</p>
+        <h1 className="main-title" style={{ color: COLORS.red }}>
+          ANALISIS & MANAJEMEN RISIKO
+        </h1>
+        <p className="sub-title">
+          Evaluasi Probabilitas (Likelihood) dan Dampak (Impact) berdasarkan
+          skala 1 - 5. Tindakan Mitigasi akan otomatis terdaftar ke menu
+          Kontrol.
+        </p>
       </div>
 
       {role !== "viewer" && (
         <div
           className="dashboard-card full-width-card glow-effect"
+          style={{ marginBottom: "20px", borderTop: `2px solid ${COLORS.red}` }}
+        >
+          <form
+            onSubmit={handleAddRisk}
+            className="crud-form"
+            style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}
+          >
+            <input
+              type="text"
+              placeholder="Deskripsi Skenario Risiko..."
+              value={newRisk.name}
+              onChange={(e) => setNewRisk({ ...newRisk, name: e.target.value })}
+              onFocus={() => playUISound("hover")}
+              className="cyber-input"
+              style={{ flexGrow: 1, minWidth: "250px" }}
+              required
+            />
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                background: "rgba(0,0,0,0.5)",
+                padding: "10px",
+                borderRadius: "4px",
+                border: "1px solid #333",
+              }}
+            >
+              <label style={{ color: "#aaa", fontSize: "12px" }}>
+                Likelihood (1-5):
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="5"
+                value={newRisk.likelihood}
+                onChange={(e) =>
+                  setNewRisk({ ...newRisk, likelihood: e.target.value })
+                }
+                onFocus={() => playUISound("hover")}
+                className="cyber-input"
+                style={{ width: "60px", textAlign: "center" }}
+                required
+              />
+            </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                background: "rgba(0,0,0,0.5)",
+                padding: "10px",
+                borderRadius: "4px",
+                border: "1px solid #333",
+              }}
+            >
+              <label style={{ color: "#aaa", fontSize: "12px" }}>
+                Impact (1-5):
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="5"
+                value={newRisk.impact}
+                onChange={(e) =>
+                  setNewRisk({ ...newRisk, impact: e.target.value })
+                }
+                onFocus={() => playUISound("hover")}
+                className="cyber-input"
+                style={{ width: "60px", textAlign: "center" }}
+                required
+              />
+            </div>
+            <input
+              type="text"
+              placeholder="Tindakan Mitigasi (Otomatis ke Kontrol)..."
+              value={newRisk.mitigation}
+              onChange={(e) =>
+                setNewRisk({ ...newRisk, mitigation: e.target.value })
+              }
+              onFocus={() => playUISound("hover")}
+              className="cyber-input"
+              style={{ flexGrow: 1, minWidth: "250px" }}
+            />
+            <button
+              type="submit"
+              className="action-btn"
+              style={{
+                backgroundColor: COLORS.red,
+                color: "#fff",
+                fontWeight: "bold",
+              }}
+              onMouseEnter={() => playUISound("hover")}
+            >
+              + EVALUASI RISIKO
+            </button>
+          </form>
+        </div>
+      )}
+
+      <div className="dashboard-card full-width-card glow-effect">
+        <table className="data-table cyber-grid">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th style={{ width: "30%" }}>Skenario Risiko</th>
+              <th style={{ textAlign: "center" }}>Likelihood</th>
+              <th style={{ textAlign: "center" }}>Impact</th>
+              <th style={{ textAlign: "center" }}>Risk Level</th>
+              <th>Saran Mitigasi</th>
+              {role !== "viewer" && (
+                <th style={{ textAlign: "center", width: "140px" }}>Aksi</th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {risks.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={role !== "viewer" ? 7 : 6}
+                  style={{
+                    textAlign: "center",
+                    padding: "20px",
+                    color: "#666",
+                  }}
+                >
+                  Belum ada data risiko terdaftar.
+                </td>
+              </tr>
+            ) : (
+              risks.map((r) => {
+                const status = getRiskStatus(r.likelihood, r.impact);
+
+                if (editingId === r.id) {
+                  return (
+                    <tr
+                      key={r.id}
+                      style={{ backgroundColor: "rgba(229, 57, 53, 0.1)" }}
+                    >
+                      <td
+                        style={{
+                          color: COLORS.red,
+                          fontFamily: "monospace",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {r.id}
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          value={editFormData.name}
+                          onChange={(e) =>
+                            setEditFormData({
+                              ...editFormData,
+                              name: e.target.value,
+                            })
+                          }
+                          className="cyber-input"
+                          style={{
+                            padding: "6px",
+                            width: "95%",
+                            borderColor: COLORS.red,
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          min="1"
+                          max="5"
+                          value={editFormData.likelihood}
+                          onChange={(e) =>
+                            setEditFormData({
+                              ...editFormData,
+                              likelihood: e.target.value,
+                            })
+                          }
+                          className="cyber-input"
+                          style={{
+                            padding: "6px",
+                            width: "100%",
+                            textAlign: "center",
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          min="1"
+                          max="5"
+                          value={editFormData.impact}
+                          onChange={(e) =>
+                            setEditFormData({
+                              ...editFormData,
+                              impact: e.target.value,
+                            })
+                          }
+                          className="cyber-input"
+                          style={{
+                            padding: "6px",
+                            width: "100%",
+                            textAlign: "center",
+                          }}
+                        />
+                      </td>
+                      <td
+                        style={{
+                          textAlign: "center",
+                          color: "#888",
+                          fontSize: "11px",
+                        }}
+                      >
+                        Otomatis Dihitung
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          value={editFormData.mitigation}
+                          onChange={(e) =>
+                            setEditFormData({
+                              ...editFormData,
+                              mitigation: e.target.value,
+                            })
+                          }
+                          className="cyber-input"
+                          style={{ padding: "6px", width: "95%" }}
+                        />
+                      </td>
+                      {role !== "viewer" && (
+                        <td
+                          style={{
+                            display: "flex",
+                            gap: "8px",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <button
+                            onClick={handleSaveEdit}
+                            className="action-btn"
+                            style={{
+                              padding: "4px 10px",
+                              background: COLORS.green,
+                              color: "#000",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            Simpan
+                          </button>
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="action-btn"
+                            style={{
+                              padding: "4px 10px",
+                              background: "#444",
+                              color: "#fff",
+                            }}
+                          >
+                            Batal
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                }
+
+                return (
+                  <tr key={r.id}>
+                    <td
+                      style={{
+                        color: COLORS.red,
+                        fontFamily: "monospace",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {r.id}
+                    </td>
+                    <td style={{ fontWeight: "bold", color: "#ddd" }}>
+                      {r.name}
+                    </td>
+                    <td
+                      style={{
+                        textAlign: "center",
+                        color: "#aaa",
+                        fontSize: "16px",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {r.likelihood}
+                    </td>
+                    <td
+                      style={{
+                        textAlign: "center",
+                        color: "#aaa",
+                        fontSize: "16px",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {r.impact}
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      <div
+                        style={{
+                          background: `${status.color}22`,
+                          border: `1px solid ${status.color}`,
+                          color: status.color,
+                          padding: "5px 10px",
+                          borderRadius: "4px",
+                          fontWeight: "bold",
+                          display: "inline-block",
+                          fontSize: "12px",
+                          width: "80px",
+                        }}
+                      >
+                        {status.score} - {status.label}
+                      </div>
+                    </td>
+                    <td
+                      style={{
+                        color: "#aaa",
+                        fontSize: "13px",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      {r.mitigation}
+                    </td>
+                    {role !== "viewer" && (
+                      <td
+                        style={{
+                          display: "flex",
+                          gap: "8px",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <button
+                          onClick={() => handleEditClick(r)}
+                          className="action-btn"
+                          style={{
+                            padding: "4px 10px",
+                            background: "transparent",
+                            border: `1px solid ${COLORS.primary}`,
+                            color: COLORS.primary,
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRisk(r.id, r.name)}
+                          className="action-btn"
+                          style={{
+                            padding: "4px 10px",
+                            background: "transparent",
+                            border: `1px solid ${COLORS.red}`,
+                            color: COLORS.red,
+                          }}
+                        >
+                          Hapus
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------
+// ASSET MANAGER
+// ---------------------------------------------------------
+function AssetManager({ assets, setAssets, role, playUISound, addLog }) {
+  const [newAsset, setNewAsset] = useState({
+    name: "",
+    value: "",
+    category: "Perangkat Keras",
+  });
+  const [editingId, setEditingId] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+
+  const handleAddAsset = (e) => {
+    e.preventDefault();
+    playUISound("alert");
+    const nextIdNum =
+      assets.length > 0
+        ? Math.max(...assets.map((a) => parseInt(a.id.split("-")[1]) || 0)) + 1
+        : 1;
+    const formattedId = `AST-${nextIdNum.toString().padStart(2, "0")}`;
+    const assetToAdd = {
+      ...newAsset,
+      id: formattedId,
+      value: parseFloat(newAsset.value),
+    };
+    setAssets([...assets, assetToAdd]);
+    addLog(
+      "CREATE",
+      "Aset Ditambahkan",
+      `Aset baru [${formattedId}] '${assetToAdd.name}' didaftarkan ke sistem.`,
+    );
+    setNewAsset({ name: "", value: "", category: "Perangkat Keras" });
+  };
+
+  const handleEditClick = (asset) => {
+    playUISound("hover");
+    setEditingId(asset.id);
+    setEditFormData(asset);
+  };
+
+  const handleSaveEdit = () => {
+    playUISound("click");
+    setAssets(
+      assets.map((a) =>
+        a.id === editingId
+          ? { ...editFormData, value: parseFloat(editFormData.value) }
+          : a,
+      ),
+    );
+    addLog(
+      "UPDATE",
+      "Aset Diperbarui",
+      `Informasi aset [${editingId}] telah diubah.`,
+    );
+    setEditingId(null);
+  };
+
+  const handleDeleteAsset = (id, name) => {
+    if (
+      window.confirm(
+        `Peringatan: Apakah Anda yakin ingin menghapus aset '${name}' dari sistem?`,
+      )
+    ) {
+      playUISound("click");
+      setAssets(assets.filter((a) => a.id !== id));
+      addLog("DELETE", "Aset Dihapus", `Aset [${id}] dihapus dari sistem.`);
+    }
+  };
+
+  return (
+    <div className="dashboard-content animate-fade-in">
+      <div className="header-section">
+        <h1 className="main-title">MANAJEMEN ASET</h1>
+      </div>
+      {role !== "viewer" && (
+        <div
+          className="dashboard-card full-width-card glow-effect"
           style={{ marginBottom: "20px", minHeight: "auto" }}
         >
-          <div className="card-header">
-            <h3 className="card-title">Register New Asset</h3>
-          </div>
           <form onSubmit={handleAddAsset} className="crud-form">
             <input
               type="text"
-              placeholder="Asset Name"
+              placeholder="Nama/Deskripsi Aset Baru..."
               value={newAsset.name}
               onChange={(e) =>
                 setNewAsset({ ...newAsset, name: e.target.value })
               }
+              onFocus={() => playUISound("hover")}
               className="cyber-input"
               required
             />
             <input
               type="number"
-              placeholder="Value in $"
+              placeholder="Valuasi Rp (Cth: 5000 Juta)"
               value={newAsset.value}
               onChange={(e) =>
                 setNewAsset({ ...newAsset, value: e.target.value })
               }
+              onFocus={() => playUISound("hover")}
               className="cyber-input"
               required
             />
@@ -1469,53 +2180,192 @@ function AssetManager({ assets, setAssets, logAudit, role }) {
               onChange={(e) =>
                 setNewAsset({ ...newAsset, category: e.target.value })
               }
+              onFocus={() => playUISound("hover")}
               className="cyber-select"
             >
-              <option value="Hardware">Hardware</option>
-              <option value="Software">Software</option>
-              <option value="Data">Data</option>
+              <option value="Perangkat Keras">
+                Perangkat Keras (Alat/Server)
+              </option>
+              <option value="Fisik">Fisik (Alat Berat/Fasilitas)</option>
+              <option value="Basis Data">Basis Data</option>
+              <option value="Finansial">Finansial / Pendapatan</option>
+              <option value="Sertifikasi">Sertifikasi / Reputasi</option>
             </select>
-            <button type="submit" className="action-btn add-btn">
-              + ADD ASSET
+            <button
+              type="submit"
+              className="action-btn add-btn"
+              onMouseEnter={() => playUISound("hover")}
+            >
+              + TAMBAH ASET
             </button>
           </form>
         </div>
       )}
-
       <div className="dashboard-card full-width-card glow-effect">
         <table className="data-table cyber-grid">
           <thead>
             <tr>
-              <th>Asset ID</th>
-              <th>Asset Name</th>
-              <th>Category</th>
-              <th>Valuation ($)</th>
-              {role === "admin" && <th>Action</th>}
+              <th>ID Aset</th>
+              <th>Nama Aset</th>
+              <th>Kategori</th>
+              <th>Valuasi (Dalam Jutaan)</th>
+              {role !== "viewer" && (
+                <th style={{ width: "140px", textAlign: "center" }}>Aksi</th>
+              )}
             </tr>
           </thead>
           <tbody>
-            {assets.map((asset) => (
-              <tr key={asset.id}>
-                <td style={{ color: COLORS.neonBlue, fontFamily: "monospace" }}>
-                  {asset.id}
-                </td>
-                <td>{asset.name}</td>
-                <td>{asset.category}</td>
-                <td style={{ fontWeight: "bold" }}>
-                  {formatMoney(asset.value)}
-                </td>
-                {role === "admin" && (
-                  <td>
-                    <button
-                      onClick={() => handleDelete(asset.id)}
-                      className="action-btn delete-btn"
-                    >
-                      DELETE
-                    </button>
+            {assets.map((asset) =>
+              editingId === asset.id ? (
+                <tr
+                  key={asset.id}
+                  style={{ backgroundColor: "rgba(255,152,0,0.1)" }}
+                >
+                  <td
+                    style={{
+                      color: COLORS.primary,
+                      fontFamily: "monospace",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {asset.id}
                   </td>
-                )}
-              </tr>
-            ))}
+                  <td>
+                    <input
+                      type="text"
+                      value={editFormData.name}
+                      onChange={(e) =>
+                        setEditFormData({
+                          ...editFormData,
+                          name: e.target.value,
+                        })
+                      }
+                      className="cyber-input"
+                      style={{ padding: "6px", width: "90%" }}
+                    />
+                  </td>
+                  <td>
+                    <select
+                      value={editFormData.category}
+                      onChange={(e) =>
+                        setEditFormData({
+                          ...editFormData,
+                          category: e.target.value,
+                        })
+                      }
+                      className="cyber-select"
+                      style={{ padding: "6px", width: "90%" }}
+                    >
+                      <option value="Perangkat Keras">Perangkat Keras</option>
+                      <option value="Fisik">Fisik</option>
+                      <option value="Basis Data">Basis Data</option>
+                      <option value="Finansial">Finansial</option>
+                      <option value="Sertifikasi">Sertifikasi</option>
+                    </select>
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      value={editFormData.value}
+                      onChange={(e) =>
+                        setEditFormData({
+                          ...editFormData,
+                          value: e.target.value,
+                        })
+                      }
+                      className="cyber-input"
+                      style={{ padding: "6px", width: "90%" }}
+                    />
+                  </td>
+                  {role !== "viewer" && (
+                    <td
+                      style={{
+                        display: "flex",
+                        gap: "8px",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <button
+                        onClick={handleSaveEdit}
+                        className="action-btn"
+                        style={{
+                          padding: "4px 10px",
+                          background: COLORS.green,
+                          color: "#000",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        Simpan
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="action-btn"
+                        style={{
+                          padding: "4px 10px",
+                          background: "#444",
+                          color: "#fff",
+                        }}
+                      >
+                        Batal
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ) : (
+                <tr key={asset.id}>
+                  <td
+                    style={{
+                      color: COLORS.primary,
+                      fontFamily: "monospace",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {asset.id}
+                  </td>
+                  <td style={{ fontWeight: "bold", color: "#ddd" }}>
+                    {asset.name}
+                  </td>
+                  <td style={{ color: "#aaa" }}>{asset.category}</td>
+                  <td style={{ color: COLORS.green, fontWeight: "bold" }}>
+                    {formatIDR(asset.value)}
+                  </td>
+                  {role !== "viewer" && (
+                    <td
+                      style={{
+                        display: "flex",
+                        gap: "8px",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <button
+                        onClick={() => handleEditClick(asset)}
+                        className="action-btn"
+                        style={{
+                          padding: "4px 10px",
+                          background: "transparent",
+                          border: `1px solid ${COLORS.primary}`,
+                          color: COLORS.primary,
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAsset(asset.id, asset.name)}
+                        className="action-btn"
+                        style={{
+                          padding: "4px 10px",
+                          background: "transparent",
+                          border: `1px solid ${COLORS.red}`,
+                          color: COLORS.red,
+                        }}
+                      >
+                        Hapus
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ),
+            )}
           </tbody>
         </table>
       </div>
@@ -1523,84 +2373,110 @@ function AssetManager({ assets, setAssets, logAudit, role }) {
   );
 }
 
-function ThreatManager({ threats, setThreats, logAudit, role }) {
-  const [newThreat, setNewThreat] = useState({
-    name: "",
-    probability: "",
-    category: "Malicious",
-  });
+function GenericManager({
+  data,
+  setData,
+  title,
+  prefix,
+  color,
+  role,
+  playUISound,
+  addLog,
+}) {
+  const [newItem, setNewItem] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
 
-  const handleAddThreat = (e) => {
+  const handleAdd = (e) => {
     e.preventDefault();
-    if (role === "viewer")
-      return alert("ACCESS DENIED: Role Viewer tidak memiliki izin menulis.");
-    const threatToAdd = {
-      ...newThreat,
-      id: `THR-${Math.floor(Math.random() * 1000)}`,
-      probability: parseFloat(newThreat.probability),
-    };
-    setThreats([...threats, threatToAdd]);
-    logAudit(`Added new threat: ${threatToAdd.name}`, role);
-    setNewThreat({ name: "", probability: "", category: "Malicious" });
+    if (!newItem) return;
+    playUISound("alert");
+    const nextIdNum =
+      data.length > 0
+        ? Math.max(...data.map((d) => parseInt(d.id.split("-")[1]) || 0)) + 1
+        : 1;
+    const formattedId = `${prefix}-${nextIdNum.toString().padStart(2, "0")}`;
+    const itemToAdd = { id: formattedId, name: newItem };
+    setData([...data, itemToAdd]);
+    addLog(
+      "CREATE",
+      "Data Baru Ditambahkan",
+      `Item baru [${formattedId}] didaftarkan pada kategori ${title}.`,
+    );
+    setNewItem("");
   };
-  const handleDelete = (id) => {
-    if (role !== "admin")
-      return alert("ACCESS DENIED: Hanya Admin yang dapat menghapus data.");
-    setThreats(threats.filter((t) => t.id !== id));
-    logAudit(`Deleted threat ID: ${id}`, role);
+
+  const handleEditClick = (item) => {
+    playUISound("hover");
+    setEditingId(item.id);
+    setEditFormData(item);
+  };
+
+  const handleSaveEdit = () => {
+    playUISound("click");
+    setData(data.map((d) => (d.id === editingId ? editFormData : d)));
+    addLog(
+      "UPDATE",
+      "Data Diperbarui",
+      `Informasi item [${editingId}] pada kategori ${title} telah diubah.`,
+    );
+    setEditingId(null);
+  };
+
+  const handleDelete = (id, name) => {
+    if (
+      window.confirm(
+        `Peringatan: Apakah Anda yakin ingin menghapus data '${name}' dari sistem? Semua matriks terkait akan diperbarui otomatis.`,
+      )
+    ) {
+      playUISound("click");
+      setData(data.filter((d) => d.id !== id));
+      addLog(
+        "DELETE",
+        "Data Dihapus",
+        `Item [${id}] dihapus dari kategori ${title}.`,
+      );
+    }
   };
 
   return (
     <div className="dashboard-content animate-fade-in">
       <div className="header-section">
-        <h1 className="main-title">THREAT INTELLIGENCE</h1>
-        <p className="sub-title">Catalog of identified system threats.</p>
+        <h1 className="main-title" style={{ color: color }}>
+          {title}
+        </h1>
       </div>
       {role !== "viewer" && (
         <div
           className="dashboard-card full-width-card glow-effect"
-          style={{ marginBottom: "20px", minHeight: "auto" }}
+          style={{
+            marginBottom: "20px",
+            minHeight: "auto",
+            borderTop: `1px solid ${color}`,
+          }}
         >
-          <div className="card-header">
-            <h3 className="card-title">Log New Threat</h3>
-          </div>
-          <form onSubmit={handleAddThreat} className="crud-form">
+          <form onSubmit={handleAdd} className="crud-form">
             <input
               type="text"
-              placeholder="Threat Name"
-              value={newThreat.name}
-              onChange={(e) =>
-                setNewThreat({ ...newThreat, name: e.target.value })
-              }
+              placeholder={`Tambah Data Baru...`}
+              value={newItem}
+              onChange={(e) => setNewItem(e.target.value)}
+              onFocus={() => playUISound("hover")}
               className="cyber-input"
+              style={{ borderColor: color }}
               required
             />
-            <input
-              type="number"
-              step="0.01"
-              max="1"
-              min="0"
-              placeholder="Probability (0.0 to 1.0)"
-              value={newThreat.probability}
-              onChange={(e) =>
-                setNewThreat({ ...newThreat, probability: e.target.value })
-              }
-              className="cyber-input"
-              required
-            />
-            <select
-              value={newThreat.category}
-              onChange={(e) =>
-                setNewThreat({ ...newThreat, category: e.target.value })
-              }
-              className="cyber-select"
+            <button
+              type="submit"
+              className="action-btn"
+              style={{
+                backgroundColor: color,
+                color: "#000",
+                fontWeight: "bold",
+              }}
+              onMouseEnter={() => playUISound("hover")}
             >
-              <option value="Malicious">Malicious Attack</option>
-              <option value="Operational">Operational Failure</option>
-              <option value="Natural">Natural Disaster</option>
-            </select>
-            <button type="submit" className="action-btn add-btn">
-              + LOG THREAT
+              + TAMBAH DATA
             </button>
           </form>
         </div>
@@ -1609,36 +2485,129 @@ function ThreatManager({ threats, setThreats, logAudit, role }) {
         <table className="data-table cyber-grid">
           <thead>
             <tr>
-              <th>Threat ID</th>
-              <th>Threat Vector</th>
-              <th>Category</th>
-              <th>Probability</th>
-              {role === "admin" && <th>Action</th>}
+              <th>ID Registrasi</th>
+              <th>Deskripsi Detail</th>
+              {role !== "viewer" && (
+                <th style={{ width: "140px", textAlign: "center" }}>Aksi</th>
+              )}
             </tr>
           </thead>
           <tbody>
-            {threats.map((threat) => (
-              <tr key={threat.id}>
-                <td style={{ color: COLORS.red, fontFamily: "monospace" }}>
-                  {threat.id}
-                </td>
-                <td>{threat.name}</td>
-                <td>{threat.category}</td>
-                <td style={{ fontWeight: "bold" }}>
-                  {(threat.probability * 100).toFixed(0)}%
-                </td>
-                {role === "admin" && (
-                  <td>
-                    <button
-                      onClick={() => handleDelete(threat.id)}
-                      className="action-btn delete-btn"
-                    >
-                      DELETE
-                    </button>
+            {data.map((item) =>
+              editingId === item.id ? (
+                <tr key={item.id} style={{ backgroundColor: `${color}1A` }}>
+                  <td
+                    style={{
+                      color: color,
+                      fontFamily: "monospace",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {item.id}
                   </td>
-                )}
-              </tr>
-            ))}
+                  <td>
+                    <input
+                      type="text"
+                      value={editFormData.name}
+                      onChange={(e) =>
+                        setEditFormData({
+                          ...editFormData,
+                          name: e.target.value,
+                        })
+                      }
+                      className="cyber-input"
+                      style={{
+                        padding: "6px",
+                        width: "90%",
+                        borderColor: color,
+                      }}
+                    />
+                  </td>
+                  {role !== "viewer" && (
+                    <td
+                      style={{
+                        display: "flex",
+                        gap: "8px",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <button
+                        onClick={handleSaveEdit}
+                        className="action-btn"
+                        style={{
+                          padding: "4px 10px",
+                          background: color,
+                          color: "#000",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        Simpan
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="action-btn"
+                        style={{
+                          padding: "4px 10px",
+                          background: "#444",
+                          color: "#fff",
+                        }}
+                      >
+                        Batal
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ) : (
+                <tr key={item.id}>
+                  <td
+                    style={{
+                      color: color,
+                      fontFamily: "monospace",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {item.id}
+                  </td>
+                  <td style={{ fontWeight: "bold", color: "#ddd" }}>
+                    {item.name}
+                  </td>
+                  {role !== "viewer" && (
+                    <td
+                      style={{
+                        display: "flex",
+                        gap: "8px",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <button
+                        onClick={() => handleEditClick(item)}
+                        className="action-btn"
+                        style={{
+                          padding: "4px 10px",
+                          background: "transparent",
+                          border: `1px solid ${color}`,
+                          color: color,
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.id, item.name)}
+                        className="action-btn"
+                        style={{
+                          padding: "4px 10px",
+                          background: "transparent",
+                          border: `1px solid ${COLORS.red}`,
+                          color: COLORS.red,
+                        }}
+                      >
+                        Hapus
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ),
+            )}
           </tbody>
         </table>
       </div>
@@ -1646,140 +2615,542 @@ function ThreatManager({ threats, setThreats, logAudit, role }) {
   );
 }
 
-// Fitur Audit Trail
-function AuditTrail({ auditLogs }) {
+// === KOMPONEN EKSPOR ===
+function ExportCenter({
+  assets,
+  vulnerabilities,
+  threats,
+  controls,
+  impactMap,
+  threatImpMap,
+  controlValMap,
+  playUISound,
+  addLog,
+}) {
+  const exportToExcel = () => {
+    playUISound("click");
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, utils.json_to_sheet(assets), "Data_Aset");
+    utils.book_append_sheet(
+      wb,
+      utils.json_to_sheet(vulnerabilities),
+      "Data_Kerentanan",
+    );
+    utils.book_append_sheet(wb, utils.json_to_sheet(threats), "Data_Ancaman");
+    utils.book_append_sheet(wb, utils.json_to_sheet(controls), "Data_Kontrol");
+    writeFile(wb, "Database_Risiko_SMA_Mining.xlsx");
+    addLog(
+      "EXPORT",
+      "Ekspor Dokumen Excel",
+      "Pengguna mengunduh database mentah (XLSX).",
+    );
+  };
+
+  const exportToPDF = () => {
+    try {
+      playUISound("click");
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.setTextColor(255, 152, 0);
+      doc.text("LAPORAN KOMPREHENSIF MANAJEMEN RISIKO", 14, 20);
+      doc.setFontSize(12);
+      doc.setTextColor(100);
+      doc.text("PT. SAMUDRA MULYA ABADI (SMA MINING)", 14, 28);
+      doc.setFontSize(10);
+      doc.text(`Dicetak pada: ${new Date().toLocaleString()}`, 14, 34);
+
+      let currentY = 45;
+      doc.setFontSize(12);
+      doc.setTextColor(0);
+      doc.text("1. REGISTRI ASET", 14, currentY);
+      autoTable(doc, {
+        startY: currentY + 5,
+        head: [["ID Aset", "Nama Aset", "Kategori", "Valuasi"]],
+        body: assets.map((a) => [a.id, a.name, a.category, formatIDR(a.value)]),
+        headStyles: { fillColor: [255, 152, 0] },
+      });
+      doc.save("Laporan_Manajemen_Risiko.pdf");
+      addLog(
+        "EXPORT",
+        "Ekspor Dokumen PDF",
+        "Pengguna mengunduh Laporan Komprehensif Manajemen Risiko (PDF).",
+      );
+    } catch (err) {
+      console.error(err);
+      alert(
+        "Gagal mengunduh PDF. Pastikan jspdf-autotable terhubung dengan baik.",
+      );
+    }
+  };
+
+  const topThreats = [...threats]
+    .map((t) => ({ ...t, score: threatImpMap[t.id] || 0 }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+
+  const handlePrintSummary = () => {
+    playUISound("click");
+    addLog(
+      "EXPORT",
+      "Cetak Dokumen Terisolasi",
+      "Pengguna mencetak Laporan Ringkasan Eksekutif.",
+    );
+    const printWindow = window.open("", "", "height=800,width=800");
+    let html = `
+      <html>
+        <head>
+          <title>Ringkasan Manajemen Risiko SMA Mining</title>
+          <style>
+            body { font-family: 'Arial', sans-serif; padding: 40px; color: #333; }
+            h2 { color: #333; border-bottom: 2px solid #FF9800; padding-bottom: 10px; margin-bottom: 30px;}
+            h3 { color: #555; }
+            ul { list-style: none; padding: 0; }
+            li { padding: 15px; margin-bottom: 10px; border: 1px solid #ddd; border-left: 6px solid #FF9800; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; background-color: #fcfcfc;}
+            .high-risk { border-left-color: #E53935; background-color: #ffebee; }
+            .med-risk { border-left-color: #FFC107; background-color: #fff8e1; }
+            .kpi-container { display: flex; gap: 20px; margin-top: 40px; }
+            .kpi-box { flex: 1; padding: 20px; border: 1px solid #ccc; border-radius: 6px; text-align: center; background-color: #f9f9f9; }
+            .kpi-val { font-size: 28px; font-weight: bold; margin-top: 10px; color: #333; }
+            .val-red { color: #E53935; }
+            .val-green { color: #4CAF50; }
+          </style>
+        </head>
+        <body>
+          <h2>Laporan Ringkasan Cepat Manajemen Risiko</h2>
+          <h3>5 Ancaman Teratas (Top Threats by Magnitude)</h3>
+          <ul>
+    `;
+    topThreats.forEach((t) => {
+      let isHigh = t.score > 10000;
+      let clz = isHigh ? "high-risk" : "med-risk";
+      let stat = isHigh ? "Tinggi" : "Sedang";
+      html += `<li class="${clz}"><span>${t.id} - ${t.name}</span><strong>Skor: ${formatNilai(t.score)} (${stat})</strong></li>`;
+    });
+    html += `
+          </ul>
+          <div class="kpi-container">
+            <div class="kpi-box"><div>Total Aset</div><div class="kpi-val">${assets.length}</div></div>
+            <div class="kpi-box"><div>Total Kerentanan</div><div class="kpi-val val-red">${vulnerabilities.length}</div></div>
+            <div class="kpi-box"><div>Kontrol Aktif</div><div class="kpi-val val-green">${controls.length}</div></div>
+          </div>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
+  };
+
   return (
     <div className="dashboard-content animate-fade-in">
       <div className="header-section">
-        <h1 className="main-title">SYSTEM AUDIT TRAIL</h1>
+        <h1 className="main-title">PUSAT LAPORAN & EKSPOR</h1>
         <p className="sub-title">
-          Immutable log of system modifications and access histories.
+          Unduh data mentah atau laporan analitik untuk keperluan dokumentasi
+          fisik.
         </p>
       </div>
-      <div className="dashboard-card glow-effect" style={{ padding: "30px" }}>
-        <div className="audit-timeline">
-          {auditLogs.length === 0 && (
-            <p style={{ color: "#888", fontFamily: "monospace" }}>
-              No audit records found.
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "30px",
+          marginBottom: "40px",
+        }}
+      >
+        <div
+          className="dashboard-card glow-effect"
+          style={{
+            borderTop: `2px solid ${COLORS.red}`,
+            padding: "30px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <div>
+            <h2
+              style={{
+                color: COLORS.red,
+                marginBottom: "15px",
+                fontSize: "18px",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+              }}
+            >
+              📄 Ekspor Laporan Lengkap (PDF)
+            </h2>
+            <p
+              style={{
+                color: "#aaa",
+                marginBottom: "25px",
+                fontSize: "13px",
+                lineHeight: "1.6",
+              }}
+            >
+              Menghasilkan laporan PDF utuh yang mencakup Aset, Kerentanan,
+              Ancaman, dan Kontrol.
             </p>
-          )}
-          {auditLogs.map((log, index) => (
-            <div key={index} className="audit-event">
-              <span className="audit-time">
-                {log.time} | USER:{" "}
-                <span style={{ color: "#ff7b7b" }}>{log.user}</span>
-              </span>
-              <div className="audit-action">{log.action}</div>
-            </div>
-          ))}
+          </div>
+          <button
+            onClick={exportToPDF}
+            onMouseEnter={(e) => {
+              playUISound("hover");
+              e.currentTarget.style.background = "rgba(229, 57, 53, 0.15)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+            }}
+            style={{
+              backgroundColor: "transparent",
+              border: `1px solid ${COLORS.red}`,
+              color: COLORS.red,
+              padding: "14px 20px",
+              fontWeight: "bold",
+              cursor: "pointer",
+              transition: "all 0.3s ease",
+              borderRadius: "4px",
+              letterSpacing: "1px",
+            }}
+          >
+            ⬇ UNDUH DOKUMEN PDF
+          </button>
         </div>
+        <div
+          className="dashboard-card glow-effect"
+          style={{
+            borderTop: `2px solid ${COLORS.green}`,
+            padding: "30px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <div>
+            <h2
+              style={{
+                color: COLORS.green,
+                marginBottom: "15px",
+                fontSize: "18px",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+              }}
+            >
+              📊 Ekspor ke Excel (XLSX)
+            </h2>
+            <p
+              style={{
+                color: "#aaa",
+                marginBottom: "25px",
+                fontSize: "13px",
+                lineHeight: "1.6",
+              }}
+            >
+              Mengunduh seluruh database (Matriks tidak termasuk) ke dalam file
+              .xlsx multi-sheet.
+            </p>
+          </div>
+          <button
+            onClick={exportToExcel}
+            onMouseEnter={(e) => {
+              playUISound("hover");
+              e.currentTarget.style.background = "rgba(76, 175, 80, 0.15)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+            }}
+            style={{
+              backgroundColor: "transparent",
+              border: `1px solid ${COLORS.green}`,
+              color: COLORS.green,
+              padding: "14px 20px",
+              fontWeight: "bold",
+              cursor: "pointer",
+              transition: "all 0.3s ease",
+              borderRadius: "4px",
+              letterSpacing: "1px",
+            }}
+          >
+            ⬇ UNDUH DOKUMEN EXCEL
+          </button>
+        </div>
+      </div>
+      <div
+        className="dashboard-card full-width-card glow-effect"
+        style={{ padding: "30px" }}
+      >
+        <h2
+          style={{
+            color: COLORS.primary,
+            marginBottom: "20px",
+            borderBottom: `1px solid rgba(255, 152, 0, 0.3)`,
+            paddingBottom: "10px",
+            fontSize: "18px",
+          }}
+        >
+          Ringkasan Eksekutif Terkini
+        </h2>
+        <ul style={{ listStyle: "none", padding: 0, margin: "0 0 30px 0" }}>
+          {topThreats.map((item) => {
+            const isHigh = item.score > 10000;
+            const borderColor = isHigh ? COLORS.red : COLORS.yellow;
+            const textColor = isHigh ? "#ffbaba" : "#fff3cd";
+            return (
+              <li
+                key={item.id}
+                style={{
+                  padding: "15px 20px",
+                  borderLeft: `4px solid ${borderColor}`,
+                  backgroundColor: "rgba(0,0,0,0.3)",
+                  marginBottom: "10px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  borderRadius: "4px",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: "bold",
+                    color: "#fff",
+                    fontFamily: "monospace",
+                  }}
+                >
+                  {item.id} - {item.name}
+                </span>
+                <span
+                  style={{
+                    fontSize: "13px",
+                    color: textColor,
+                    fontWeight: "bold",
+                  }}
+                >
+                  Skor: {formatNilai(item.score)} (
+                  {isHigh ? "Tinggi" : "Sedang"})
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "20px",
+            marginBottom: "30px",
+          }}
+        >
+          <div
+            style={{
+              padding: "20px",
+              background: "rgba(0,0,0,0.5)",
+              borderRadius: "6px",
+              border: "1px solid #333",
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "12px",
+                color: "#888",
+                marginBottom: "8px",
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+              }}
+            >
+              Total Aset
+            </div>
+            <div
+              style={{ fontSize: "32px", fontWeight: "bold", color: "#ddd" }}
+            >
+              {assets.length}
+            </div>
+          </div>
+          <div
+            style={{
+              padding: "20px",
+              background: "rgba(0,0,0,0.5)",
+              borderRadius: "6px",
+              border: "1px solid #333",
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "12px",
+                color: "#888",
+                marginBottom: "8px",
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+              }}
+            >
+              Total Kerentanan
+            </div>
+            <div
+              style={{
+                fontSize: "32px",
+                fontWeight: "bold",
+                color: COLORS.red,
+              }}
+            >
+              {vulnerabilities.length}
+            </div>
+          </div>
+          <div
+            style={{
+              padding: "20px",
+              background: "rgba(0,0,0,0.5)",
+              borderRadius: "6px",
+              border: "1px solid #333",
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "12px",
+                color: "#888",
+                marginBottom: "8px",
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+              }}
+            >
+              Kontrol Aktif
+            </div>
+            <div
+              style={{
+                fontSize: "32px",
+                fontWeight: "bold",
+                color: COLORS.green,
+              }}
+            >
+              {controls.length}
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={handlePrintSummary}
+          onMouseEnter={(e) => {
+            playUISound("hover");
+            e.currentTarget.style.background = "rgba(255, 152, 0, 0.1)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+          }}
+          style={{
+            width: "100%",
+            backgroundColor: "transparent",
+            border: `1px dashed ${COLORS.primary}`,
+            color: COLORS.primary,
+            padding: "16px",
+            cursor: "pointer",
+            fontWeight: "bold",
+            letterSpacing: "1px",
+            transition: "0.3s ease",
+            borderRadius: "4px",
+          }}
+        >
+          🖨️ CETAK RINGKASAN HALAMAN INI (PRINT ONLY)
+        </button>
       </div>
     </div>
   );
 }
 
-// Fitur Export Laporan Lengkap
-function ExportCenter({ assets, threats, assessments }) {
-  const exportToExcel = () => {
-    const wsAssets = utils.json_to_sheet(assets);
-    const wsThreats = utils.json_to_sheet(threats);
-    const wsAssessments = utils.json_to_sheet(assessments);
-    const wb = utils.book_new();
-    utils.book_append_sheet(wb, wsAssets, "Asset_Registry");
-    utils.book_append_sheet(wb, wsThreats, "Threat_Intel");
-    utils.book_append_sheet(wb, wsAssessments, "Risk_Assessments");
-    writeFile(wb, "NYS_Cyber_Command_Data.xlsx");
-  };
-
-  const exportToPDF = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.setTextColor(194, 24, 7);
-    doc.text("NYS CYBER COMMAND - SYSTEM REPORT", 14, 20);
-    doc.setFontSize(11);
-    doc.setTextColor(100);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
-
-    doc.autoTable({
-      startY: 35,
-      head: [["Log ID", "Asset Target", "Threat Vector", "Score", "Status"]],
-      body: assessments.map((a) => [
-        a.id,
-        a.asset,
-        a.threat,
-        a.score,
-        a.level.label,
-      ]),
-      theme: "grid",
-      headStyles: { fillColor: [0, 243, 255], textColor: [0, 0, 0] },
-    });
-
-    const finalY = doc.lastAutoTable.finalY || 35;
-    doc.text("CRITICAL ASSET REGISTRY", 14, finalY + 15);
-    doc.autoTable({
-      startY: finalY + 20,
-      head: [["Asset ID", "Asset Name", "Category", "Valuation ($)"]],
-      body: assets.map((a) => [
-        a.id,
-        a.name,
-        a.category,
-        a.value.toLocaleString(),
-      ]),
-      theme: "grid",
-      headStyles: { fillColor: [50, 50, 50] },
-    });
-    doc.save("NYS_Cyber_Command_Report.pdf");
-  };
+// === KOMPONEN RIWAYAT LOG ===
+function HistoryLog({ logs }) {
+  const safeLogs = Array.isArray(logs) ? logs : [];
 
   return (
     <div className="dashboard-content animate-fade-in">
-      <div className="header-section">
-        <h1 className="main-title">DOCUMENT EXPORT FACILITY</h1>
-        <p className="sub-title">Extract raw registry and analytical logs.</p>
-      </div>
       <div
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}
+        style={{
+          marginBottom: "20px",
+          borderBottom: "1px solid rgba(255, 152, 0, 0.3)",
+          paddingBottom: "10px",
+        }}
       >
-        <div
-          className="dashboard-card glow-effect"
-          style={{ textAlign: "center", border: "1px solid #1D6F42" }}
-        >
-          <h2 style={{ color: "#1D6F42", marginBottom: "15px" }}>
-            RAW DATA (XLSX)
-          </h2>
-          <button
-            onClick={exportToExcel}
-            className="action-btn"
-            style={{
-              width: "100%",
-              padding: "15px",
-              backgroundColor: "#1D6F42",
-              color: "white",
-            }}
-          >
-            ⬇ DOWNLOAD EXCEL
-          </button>
-        </div>
-        <div
-          className="dashboard-card glow-effect"
-          style={{ textAlign: "center", border: "1px solid #c21807" }}
-        >
-          <h2 style={{ color: "#c21807", marginBottom: "15px" }}>
-            EXECUTIVE REPORT (PDF)
-          </h2>
-          <button
-            onClick={exportToPDF}
-            className="action-btn"
-            style={{
-              width: "100%",
-              padding: "15px",
-              backgroundColor: "#c21807",
-              color: "white",
-            }}
-          >
-            ⬇ DOWNLOAD PDF
-          </button>
-        </div>
+        <h2 style={{ color: "#fff", margin: 0, letterSpacing: "2px" }}>
+          RIWAYAT AKTIVITAS SISTEM
+        </h2>
+      </div>
+
+      <div className="table-container">
+        <table className="data-table cyber-grid">
+          <thead>
+            <tr>
+              <th>WAKTU</th>
+              <th>TIPE</th>
+              <th>AKSI & DESKRIPSI</th>
+              <th>PENGGUNA</th>
+            </tr>
+          </thead>
+          <tbody>
+            {safeLogs.length === 0 ? (
+              <tr>
+                <td
+                  colSpan="4"
+                  style={{
+                    textAlign: "center",
+                    padding: "30px",
+                    color: "#888",
+                  }}
+                >
+                  Sistem sedang memuat riwayat atau belum ada data masuk...
+                </td>
+              </tr>
+            ) : (
+              safeLogs.slice(0, 100).map((l, i) => {
+                let dateStr = "Waktu Tidak Valid";
+                try {
+                  if (l && l.timestamp) {
+                    const dateObj = new Date(l.timestamp);
+                    if (!isNaN(dateObj.getTime())) {
+                      dateStr = dateObj.toLocaleString("id-ID");
+                    }
+                  }
+                } catch (e) {
+                  console.error("Format tanggal error");
+                }
+
+                return (
+                  <tr key={l?.id || i}>
+                    <td style={{ color: "#aaa" }}>{dateStr}</td>
+                    <td>
+                      <span
+                        style={{
+                          color:
+                            l?.type === "LOGIN" || l?.type === "LOGOUT"
+                              ? "#00f3ff"
+                              : "#FF9800",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        [{l?.type || "INFO"}]
+                      </span>
+                    </td>
+                    <td>
+                      <strong style={{ color: "#ddd" }}>
+                        {l?.action || "-"}
+                      </strong>
+                      <br />
+                      <span style={{ color: "#888", fontSize: "12px" }}>
+                        {l?.description || "-"}
+                      </span>
+                    </td>
+                    <td style={{ color: "#4CAF50" }}>{l?.user || "SYSTEM"}</td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

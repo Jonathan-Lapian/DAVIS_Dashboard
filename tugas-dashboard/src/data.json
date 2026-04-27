@@ -1,0 +1,295 @@
+{
+  "assets": [
+    {
+      "category": "Fisik",
+      "id": "AST-01",
+      "name": "Armada Alat Berat (Excavator)",
+      "timestamp": "2026-04-21T01:47:12.979Z",
+      "value": 200000
+    },
+    {
+      "category": "Basis Data",
+      "id": "AST-02",
+      "name": "Database Engineering & Produksi",
+      "timestamp": "2026-04-21T01:47:12.979Z",
+      "value": 75000
+    },
+    {
+      "category": "Perangkat Keras",
+      "id": "AST-03",
+      "name": "Perangkat Pemantauan (CCTV, GPS, Diskem)",
+      "timestamp": "2026-04-21T01:47:12.979Z",
+      "value": 15000
+    },
+    {
+      "category": "Perangkat Keras",
+      "id": "AST-04",
+      "name": "Radio Room & Server Utama",
+      "timestamp": "2026-04-21T01:47:12.979Z",
+      "value": 35000
+    },
+    {
+      "category": "Basis Data",
+      "id": "AST-05",
+      "name": "Data Rahasia Bisnis & Operasional",
+      "timestamp": "2026-04-21T01:47:12.979Z",
+      "value": 150000
+    },
+    {
+      "category": "Tak Berwujud",
+      "id": "AST-06",
+      "name": "Sertifikasi Standar (ISO 9001, 14001, 45001)",
+      "timestamp": "2026-04-21T01:47:12.979Z",
+      "value": 50000
+    }
+  ],
+  "controls": [
+    {
+      "id": "CTRL-01",
+      "name": "Prosedur Laporan Form Manual Backup"
+    },
+    {
+      "id": "CTRL-02",
+      "name": "Infrastruktur Cadangan Server"
+    },
+    {
+      "id": "CTRL-03",
+      "name": "Sistem Dashcam (Diskem) Pemantau Kabin Operator"
+    },
+    {
+      "id": "CTRL-04",
+      "name": "Regulasi Internal Larangan Memotret/Video"
+    },
+    {
+      "id": "CTRL-05",
+      "name": "Penerapan Password Kuat, Antivirus & Firewall"
+    }
+  ],
+  "risks": [
+    {
+      "id": "RSK-01",
+      "name": "Keterlambatan pelaporan ke Radio Room akibat hilangnya sinyal di area lubang galian.",
+      "impact": 2,
+      "likelihood": 4,
+      "mitigation": "Prosedur Laporan Form Manual Backup"
+    },
+    {
+      "id": "RSK-02",
+      "name": "Kecelakaan kerja atau salah angkat material (Ore/Waste) karena operator kelelahan di shift 24 jam.",
+      "impact": 4,
+      "likelihood": 3,
+      "mitigation": "Sistem Dashcam (Diskem) Pemantau Kabin Operator"
+    },
+    {
+      "id": "RSK-03",
+      "name": "Jatuhnya rahasia operasional tambang ke publik akibat perekaman video ilegal oleh karyawan.",
+      "impact": 5,
+      "likelihood": 2,
+      "mitigation": "Regulasi Internal Larangan Memotret/Video"
+    },
+    {
+      "id": "RSK-04",
+      "name": "Penumpukan antrean input data database engineering akibat matinya server secara tiba-tiba.",
+      "impact": 2,
+      "likelihood": 2,
+      "mitigation": "Infrastruktur Cadangan Server & Laporan Manual"
+    },
+    {
+      "id": "RSK-05",
+      "name": "Manipulasi data produksi yang mengakibatkan selisih bayaran dengan pihak Owner akibat peretasan.",
+      "impact": 4,
+      "likelihood": 1,
+      "mitigation": "Penerapan Password Kuat, Antivirus & Firewall"
+    }
+  ],
+  "threats": [
+    {
+      "id": "THR-01",
+      "name": "Gangguan Sinyal / Infrastruktur Telekomunikasi"
+    },
+    {
+      "id": "THR-02",
+      "name": "Kegagalan Hardware / Server Utama Down"
+    },
+    {
+      "id": "THR-03",
+      "name": "Pemadaman Aliran Listrik (Power Outage)"
+    },
+    {
+      "id": "THR-04",
+      "name": "Kelalaian Operator (Human Error) / Kelelahan"
+    },
+    {
+      "id": "THR-05",
+      "name": "Penyebaran Media Ilegal / Pelanggaran Privasi Internal"
+    },
+    {
+      "id": "THR-06",
+      "name": "Serangan Siber (Malware / Hacker)"
+    }
+  ],
+  "vulnerabilities": [
+    {
+      "id": "VULN-01",
+      "name": "Topografi Terhalang Gunung & Area Lubang",
+      "timestamp": "2026-04-27T21:08:42.821Z"
+    },
+    {
+      "id": "VULN-02",
+      "name": "Ketergantungan Tinggi Pada Ekosistem Teknologi",
+      "timestamp": "2026-04-27T21:08:42.821Z"
+    },
+    {
+      "id": "VULN-03",
+      "name": "Intensitas Operasional (Shift 24 Jam)",
+      "timestamp": "2026-04-27T21:08:42.821Z"
+    },
+    {
+      "id": "VULN-04",
+      "name": "Akses Perangkat Komunikasi Personal (WA) di Site",
+      "timestamp": "2026-04-27T21:08:42.821Z"
+    }
+  ],
+  "matrix1Scores": {
+    "VULN-01": {
+      "AST-01": 3,
+      "AST-02": 0,
+      "AST-03": 3,
+      "AST-04": 3,
+      "AST-05": 0,
+      "AST-06": 0,
+      "AST-07": 2
+    },
+    "VULN-02": {
+      "AST-01": 0,
+      "AST-02": 3,
+      "AST-03": 3,
+      "AST-04": 3,
+      "AST-05": 2,
+      "AST-06": 1,
+      "AST-07": 2
+    },
+    "VULN-03": {
+      "AST-01": 3,
+      "AST-02": 2,
+      "AST-03": 1,
+      "AST-04": 0,
+      "AST-05": 0,
+      "AST-06": 0,
+      "AST-07": 2
+    },
+    "VULN-04": {
+      "AST-01": 0,
+      "AST-02": 1,
+      "AST-03": 0,
+      "AST-04": 1,
+      "AST-05": 3,
+      "AST-06": 3,
+      "AST-07": 3
+    },
+    "VULN-05": {
+      "AST-01": 0
+    }
+  },
+  "matrix2Scores": {
+    "1777323883498_6084": {
+      "VULN-01": 1
+    },
+    "ID-1777324084948-917": {
+      "VULN-02": 3
+    },
+    "ID-1777324102984-84": {
+      "VULN-03": 3,
+      "VULN-04": 3
+    },
+    "ID-1777324208701-473": {
+      "VULN-01": 3,
+      "VULN-02": 2
+    },
+    "ID-1777324325833-544": {
+      "VULN-01": 3,
+      "VULN-02": 1,
+      "VULN-03": 2
+    },
+    "THR-01": {
+      "VULN-01": 3,
+      "VULN-02": 3,
+      "VULN-03": 0,
+      "VULN-04": 0
+    },
+    "THR-02": {
+      "VULN-01": 1,
+      "VULN-02": 3,
+      "VULN-03": 0,
+      "VULN-04": 0
+    },
+    "THR-03": {
+      "VULN-01": 0,
+      "VULN-02": 3,
+      "VULN-03": 0,
+      "VULN-04": 0
+    },
+    "THR-04": {
+      "VULN-01": 0,
+      "VULN-02": 0,
+      "VULN-03": 3,
+      "VULN-04": 0
+    },
+    "THR-05": {
+      "VULN-01": 0,
+      "VULN-02": 0,
+      "VULN-03": 0,
+      "VULN-04": 3
+    },
+    "THR-06": {
+      "VULN-01": 0,
+      "VULN-02": 2,
+      "VULN-03": 0,
+      "VULN-04": 2
+    }
+  },
+  "matrix3Scores": {
+    "CTRL-01": {
+      "ID-1777324084948-104": 3,
+      "THR-01": 3,
+      "THR-02": 3,
+      "THR-03": 3,
+      "THR-04": 0,
+      "THR-05": 0,
+      "THR-06": 0
+    },
+    "CTRL-02": {
+      "THR-01": 1,
+      "THR-02": 3,
+      "THR-03": 0,
+      "THR-04": 0,
+      "THR-05": 0,
+      "THR-06": 0
+    },
+    "CTRL-03": {
+      "THR-01": 0,
+      "THR-02": 0,
+      "THR-03": 0,
+      "THR-04": 3,
+      "THR-05": 1,
+      "THR-06": 0
+    },
+    "CTRL-04": {
+      "THR-01": 0,
+      "THR-02": 0,
+      "THR-03": 0,
+      "THR-04": 0,
+      "THR-05": 3,
+      "THR-06": 0
+    },
+    "CTRL-05": {
+      "THR-01": 0,
+      "THR-02": 2,
+      "THR-03": 0,
+      "THR-04": 0,
+      "THR-05": 0,
+      "THR-06": 3
+    }
+  },
+  "logs": []
+}
