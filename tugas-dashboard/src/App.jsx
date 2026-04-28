@@ -97,7 +97,7 @@ const formatNilai = (val) => new Intl.NumberFormat("id-ID").format(val || 0);
 
 const COLORS = {
   red: "#E53935",
-  primary: "#FF9800", // Safety Orange
+  primary: "#FF9800",
   green: "#4CAF50",
   yellow: "#FFC107",
   white: "#ffffff",
@@ -111,9 +111,7 @@ const COLORS = {
 export default function App() {
   const [role, setRole] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
-  const [theme, setTheme] = useState("dark"); // STATE TEMA TERANG/GELAP
 
-  // --- STATE FIREBASE KOSONG ---
   const [logs, setLogs] = useState([]);
   const [assets, setAssets] = useState([]);
   const [vulnerabilities, setVulnerabilities] = useState([]);
@@ -124,7 +122,6 @@ export default function App() {
   const [matrix2Scores, setMatrix2Scores] = useState({});
   const [matrix3Scores, setMatrix3Scores] = useState({});
 
-  // --- MENGHUBUNGKAN KE FIREBASE REALTIME DATABASE ---
   useEffect(() => {
     const safeArray = (val) => {
       if (!val) return [];
@@ -172,7 +169,6 @@ export default function App() {
     return () => unsubscribes.forEach((unsub) => unsub());
   }, []);
 
-  // --- WRAPPER CRUD UNTUK FIREBASE ---
   const createFirebaseSetter =
     (path, localSetterFunction) => (newValueOrUpdater) => {
       localSetterFunction((prevData) => {
@@ -203,7 +199,6 @@ export default function App() {
     });
   };
 
-  // --- KALKULASI DINAMIS GLOBAL ---
   const impactMap = {};
   vulnerabilities.forEach((v) => {
     let sum = 0;
@@ -277,7 +272,7 @@ export default function App() {
 
   if (!role) {
     return (
-      <div className={`app-root ${theme === "light" ? "light-theme" : ""}`}>
+      <div className="app-root">
         <div className="scanlines"></div>
         <div className="cursor-tracker">
           <div className="cursor-distortion"></div>
@@ -389,7 +384,7 @@ export default function App() {
   }
 
   return (
-    <div className={`app-root ${theme === "light" ? "light-theme" : ""}`}>
+    <div className="app-root">
       <div className="scanlines"></div>
       <div className="cursor-tracker">
         <div className="cursor-distortion"></div>
@@ -532,55 +527,6 @@ export default function App() {
               marginTop: 0,
             }}
           >
-            {/* --- TOGGLE TEMA SWITCH (SVG) --- */}
-            <div
-              className={`theme-toggle-wrapper ${theme}`}
-              onClick={() => {
-                playUISound("click");
-                setTheme(theme === "dark" ? "light" : "dark");
-              }}
-              onMouseEnter={() => playUISound("hover")}
-            >
-              <div className="theme-toggle-switch">
-                <div className="toggle-thumb"></div>
-                {/* SVG Matahari (Kiri) */}
-                <svg
-                  className="icon-sun"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="5"></circle>
-                  <line x1="12" y1="1" x2="12" y2="3"></line>
-                  <line x1="12" y1="21" x2="12" y2="23"></line>
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                  <line x1="1" y1="12" x2="3" y2="12"></line>
-                  <line x1="21" y1="12" x2="23" y2="12"></line>
-                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                </svg>
-                {/* SVG Bulan (Kanan) */}
-                <svg
-                  className="icon-moon"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                </svg>
-              </div>
-              <span className="theme-label">
-                {theme === "dark" ? "MODE GELAP" : "MODE TERANG"}
-              </span>
-            </div>
-
             <button
               className="logout-btn"
               onMouseEnter={() => playUISound("hover")}
@@ -702,10 +648,6 @@ export default function App() {
     </div>
   );
 }
-
-// ==============================================================================
-// 5. VIEW COMPONENTS
-// ==============================================================================
 
 function DashboardOverview({
   assets,
@@ -949,9 +891,6 @@ function DashboardOverview({
   );
 }
 
-// ---------------------------------------------------------
-// MATRIX ENGINE
-// ---------------------------------------------------------
 function MatrixEngine({
   assets,
   vulnerabilities,
@@ -1532,9 +1471,6 @@ function MatrixEngine({
   );
 }
 
-// ---------------------------------------------------------
-// HALAMAN: MANAJEMEN RISIKO (LIKELIHOOD x IMPACT)
-// ---------------------------------------------------------
 function RiskManager({
   risks,
   setRisks,
@@ -1550,6 +1486,7 @@ function RiskManager({
     impact: 1,
     mitigation: "",
   });
+
   const [editingId, setEditingId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
 
@@ -1594,6 +1531,7 @@ function RiskManager({
       const isControlExists = controls.some(
         (c) => c.name.toLowerCase() === newRisk.mitigation.trim().toLowerCase(),
       );
+
       if (!isControlExists) {
         const nextCtrlIdNum =
           controls.length > 0
@@ -1602,10 +1540,13 @@ function RiskManager({
               ) + 1
             : 1;
         const formattedCtrlId = `CTRL-${nextCtrlIdNum.toString().padStart(2, "0")}`;
-        setControls([
-          ...controls,
-          { id: formattedCtrlId, name: newRisk.mitigation.trim() },
-        ]);
+
+        const newControlItem = {
+          id: formattedCtrlId,
+          name: newRisk.mitigation.trim(),
+        };
+
+        setControls([...controls, newControlItem]);
         addLog(
           "CREATE",
           "Kontrol Otomatis Ditambahkan",
@@ -1625,6 +1566,7 @@ function RiskManager({
 
   const handleSaveEdit = () => {
     playUISound("click");
+
     setRisks(
       risks.map((r) =>
         r.id === editingId
@@ -1646,6 +1588,7 @@ function RiskManager({
         (c) =>
           c.name.toLowerCase() === editFormData.mitigation.trim().toLowerCase(),
       );
+
       if (!isControlExists) {
         const nextCtrlIdNum =
           controls.length > 0
@@ -1654,6 +1597,7 @@ function RiskManager({
               ) + 1
             : 1;
         const formattedCtrlId = `CTRL-${nextCtrlIdNum.toString().padStart(2, "0")}`;
+
         setControls([
           ...controls,
           { id: formattedCtrlId, name: editFormData.mitigation.trim() },
@@ -1719,6 +1663,7 @@ function RiskManager({
               style={{ flexGrow: 1, minWidth: "250px" }}
               required
             />
+
             <div
               style={{
                 display: "flex",
@@ -1747,6 +1692,7 @@ function RiskManager({
                 required
               />
             </div>
+
             <div
               style={{
                 display: "flex",
@@ -1775,9 +1721,10 @@ function RiskManager({
                 required
               />
             </div>
+
             <input
               type="text"
-              placeholder="Tindakan Mitigasi (Otomatis ke Kontrol)..."
+              placeholder="Tindakan Mitigasi yang Disarankan (Otomatis ke Kontrol)..."
               value={newRisk.mitigation}
               onChange={(e) =>
                 setNewRisk({ ...newRisk, mitigation: e.target.value })
@@ -1786,6 +1733,7 @@ function RiskManager({
               className="cyber-input"
               style={{ flexGrow: 1, minWidth: "250px" }}
             />
+
             <button
               type="submit"
               className="action-btn"
@@ -2073,9 +2021,6 @@ function RiskManager({
   );
 }
 
-// ---------------------------------------------------------
-// ASSET MANAGER
-// ---------------------------------------------------------
 function AssetManager({ assets, setAssets, role, playUISound, addLog }) {
   const [newAsset, setNewAsset] = useState({
     name: "",
@@ -2615,7 +2560,6 @@ function GenericManager({
   );
 }
 
-// === KOMPONEN EKSPOR ===
 function ExportCenter({
   assets,
   vulnerabilities,
@@ -3063,7 +3007,6 @@ function ExportCenter({
   );
 }
 
-// === KOMPONEN RIWAYAT LOG ===
 function HistoryLog({ logs }) {
   const safeLogs = Array.isArray(logs) ? logs : [];
 
