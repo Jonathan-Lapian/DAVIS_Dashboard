@@ -549,6 +549,7 @@ export default function App() {
               impactMap={impactMap}
               threatImpMap={threatImpMap}
               controlValMap={controlValMap}
+              playUISound={playUISound}
             />
           )}
           {activeTab === "matrix" && (
@@ -634,6 +635,7 @@ export default function App() {
               threats={threats}
               controls={controls}
               impactMap={impactMap}
+              risks={risks}
               threatImpMap={threatImpMap}
               controlValMap={controlValMap}
               playUISound={playUISound}
@@ -658,6 +660,7 @@ function DashboardOverview({
   impactMap,
   threatImpMap,
   controlValMap,
+  playUISound,
 }) {
   const totalAssetValue = assets.reduce(
     (sum, asset) => sum + (asset.value || 0),
@@ -887,6 +890,9 @@ function DashboardOverview({
           </div>
         </div>
       </div>
+
+      {/* --- HEATMAP DI URUTAN PALING BAWAH --- */}
+      <RiskHeatmap risks={risks} playUISound={playUISound} />
     </div>
   );
 }
@@ -1471,6 +1477,341 @@ function MatrixEngine({
   );
 }
 
+function RiskHeatmap({ risks, playUISound }) {
+  const [selectedRisks, setSelectedRisks] = useState(null); // Pakai useState langsung
+
+  const yAxisLabel = [
+    "Sangat Sering (5)",
+    "Sering (4)",
+    "Mungkin (3)",
+    "Jarang (2)",
+    "Sangat Jarang (1)",
+  ];
+  const xAxisLabel = [
+    "Sangat Ringan (1)",
+    "Ringan (2)",
+    "Sedang (3)",
+    "Berat (4)",
+    "Bencana (5)",
+  ];
+
+  const getCellColor = (score) => {
+    if (score <= 4) return { bg: "rgba(76, 175, 80, 0.2)", border: "#4CAF50" };
+    if (score <= 9) return { bg: "rgba(255, 193, 7, 0.2)", border: "#FFC107" };
+    if (score <= 14) return { bg: "rgba(255, 152, 0, 0.2)", border: "#FF9800" };
+    return { bg: "rgba(229, 57, 53, 0.2)", border: "#E53935" };
+  };
+
+  return (
+    <div
+      className="dashboard-card full-width-card glow-effect"
+      style={{ marginBottom: "25px", padding: "20px", marginTop: "10px" }}
+    >
+      <h3
+        style={{
+          color: "#fff",
+          borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+          paddingBottom: "10px",
+          marginTop: 0,
+          fontFamily: "monospace",
+        }}
+      >
+        PETA SEBARAN RISIKO (HEATMAP 5x5)
+      </h3>
+      <p
+        style={{
+          fontSize: "12px",
+          color: "#888",
+          marginTop: "-5px",
+          marginBottom: "15px",
+        }}
+      >
+        💡 <strong>TIPS:</strong> Arahkan kursor untuk petunjuk, dan{" "}
+        <strong>klik kotak yang berisi angka</strong> untuk memunculkan detail
+        risiko.
+      </p>
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "20px",
+          padding: "10px",
+        }}
+      >
+        <div
+          style={{
+            writingMode: "vertical-rl",
+            transform: "rotate(180deg)",
+            textAlign: "center",
+            color: "#888",
+            fontWeight: "bold",
+            letterSpacing: "2px",
+            fontSize: "12px",
+          }}
+        >
+          &larr; LIKELIHOOD (KEMUNGKINAN)
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          {[5, 4, 3, 2, 1].map((y, rowIndex) => (
+            <div
+              key={`row-${y}`}
+              style={{ display: "flex", gap: "4px", alignItems: "center" }}
+            >
+              <span
+                style={{
+                  width: "120px",
+                  textAlign: "right",
+                  paddingRight: "10px",
+                  fontSize: "11px",
+                  color: "#666",
+                }}
+              >
+                {yAxisLabel[rowIndex]}
+              </span>
+
+              {[1, 2, 3, 4, 5].map((x) => {
+                const score = x * y;
+                const cellTheme = getCellColor(score);
+                const risksInCell =
+                  risks?.filter(
+                    (r) => Number(r.likelihood) === y && Number(r.impact) === x,
+                  ) || [];
+                const riskCount = risksInCell.length;
+
+                const tooltipText =
+                  riskCount > 0
+                    ? `Skor: ${score} - Klik untuk melihat detail!`
+                    : `Skor: ${score} (Kosong)`;
+
+                return (
+                  <div
+                    key={`cell-${x}-${y}`}
+                    title={tooltipText}
+                    onClick={() => {
+                      if (riskCount > 0) {
+                        if (playUISound) playUISound("click"); // Cek keamanan fungsi
+                        setSelectedRisks({ risks: risksInCell, score, x, y });
+                      }
+                    }}
+                    onMouseEnter={(e) => {
+                      if (playUISound) playUISound("hover");
+                      e.currentTarget.style.transform = "scale(1.15)";
+                      e.currentTarget.style.zIndex = "10";
+                      e.currentTarget.style.backgroundColor =
+                        cellTheme.border + "80";
+                      e.currentTarget.style.boxShadow = `0 0 15px ${cellTheme.border}`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "scale(1)";
+                      e.currentTarget.style.zIndex = "1";
+                      e.currentTarget.style.backgroundColor = cellTheme.bg;
+                      e.currentTarget.style.boxShadow =
+                        riskCount > 0 ? `0 0 10px ${cellTheme.border}` : "none";
+                    }}
+                    style={{
+                      width: "50px",
+                      height: "50px",
+                      backgroundColor: cellTheme.bg,
+                      border: `1px solid ${cellTheme.border}`,
+                      borderRadius: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: riskCount > 0 ? "#fff" : "transparent",
+                      fontWeight: "bold",
+                      fontSize: "18px",
+                      cursor: riskCount > 0 ? "pointer" : "crosshair",
+                      transition: "all 0.2s ease",
+                      position: "relative",
+                      boxShadow:
+                        riskCount > 0 ? `0 0 10px ${cellTheme.border}` : "none",
+                      textShadow: "0 0 5px #000",
+                    }}
+                  >
+                    {riskCount > 0 && riskCount}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+
+          <div
+            style={{ display: "flex", marginTop: "5px", paddingLeft: "130px" }}
+          >
+            {[1, 2, 3, 4, 5].map((x, index) => (
+              <div
+                key={`x-label-${x}`}
+                style={{
+                  width: "50px",
+                  marginRight: "4px",
+                  textAlign: "center",
+                  fontSize: "10px",
+                  color: "#666",
+                }}
+              >
+                {xAxisLabel[index]}
+              </div>
+            ))}
+          </div>
+          <div
+            style={{
+              textAlign: "center",
+              color: "#888",
+              fontWeight: "bold",
+              letterSpacing: "2px",
+              fontSize: "12px",
+              paddingLeft: "130px",
+              marginTop: "10px",
+            }}
+          >
+            IMPACT (DAMPAK) &rarr;
+          </div>
+        </div>
+      </div>
+
+      {/* POPUP OVERLAY */}
+      {selectedRisks && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.85)",
+            backdropFilter: "blur(6px)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+            padding: "20px",
+            boxSizing: "border-box",
+          }}
+          onClick={() => {
+            if (playUISound) playUISound("click");
+            setSelectedRisks(null);
+          }}
+        >
+          <div
+            className="glow-effect"
+            style={{
+              background: "rgba(16, 17, 18, 0.95)",
+              border: `1px solid ${getCellColor(selectedRisks.score).border}`,
+              padding: "30px",
+              borderRadius: "8px",
+              maxWidth: "650px",
+              width: "100%",
+              boxShadow: `0 0 40px ${getCellColor(selectedRisks.score).bg}`,
+              position: "relative",
+              animation: "fadeIn 0.2s ease-out",
+              textAlign: "center",
+              boxSizing: "border-box",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => {
+                if (playUISound) playUISound("click");
+                setSelectedRisks(null);
+              }}
+              style={{
+                position: "absolute",
+                top: "15px",
+                right: "20px",
+                background: "transparent",
+                border: "none",
+                color: "#fff",
+                fontSize: "20px",
+                cursor: "pointer",
+                transition: "0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "#E53935";
+                if (playUISound) playUISound("hover");
+              }}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#fff")}
+            >
+              ✖
+            </button>
+
+            <h2
+              style={{
+                color: getCellColor(selectedRisks.score).border,
+                margin: "0 0 5px 0",
+                fontFamily: "monospace",
+              }}
+            >
+              DETAIL RISIKO (Skor: {selectedRisks.score})
+            </h2>
+            <p
+              style={{ color: "#aaa", fontSize: "12px", margin: "0 0 20px 0" }}
+            >
+              Likelihood: <strong>{selectedRisks.y}</strong> | Impact:{" "}
+              <strong>{selectedRisks.x}</strong>
+            </p>
+
+            <ul
+              style={{
+                listStyle: "none",
+                padding: 0,
+                margin: 0,
+                maxHeight: "400px",
+                overflowY: "auto",
+                textAlign: "left",
+              }}
+            >
+              {selectedRisks.risks.map((r) => (
+                <li
+                  key={r.id}
+                  style={{
+                    padding: "15px",
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderLeft: `4px solid ${getCellColor(selectedRisks.score).border}`,
+                    marginBottom: "10px",
+                    borderRadius: "4px",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontWeight: "bold",
+                      color: "#fff",
+                      marginBottom: "8px",
+                      fontFamily: "monospace",
+                      fontSize: "14px",
+                      lineHeight: "1.4",
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: getCellColor(selectedRisks.score).border,
+                      }}
+                    >
+                      [{r.id}]
+                    </span>{" "}
+                    {r.name}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: "#bbb",
+                      lineHeight: "1.4",
+                    }}
+                  >
+                    <strong>Saran Mitigasi:</strong> {r.mitigation}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 function RiskManager({
   risks,
   setRisks,
@@ -2565,12 +2906,22 @@ function ExportCenter({
   vulnerabilities,
   threats,
   controls,
+  risks, // Sekarang menerima data risks
   impactMap,
   threatImpMap,
   controlValMap,
   playUISound,
   addLog,
 }) {
+  // Fungsi pembantu untuk mengkategorikan risiko di dalam laporan
+  const getRiskStatus = (likelihood, impact) => {
+    const score = likelihood * impact;
+    if (score <= 4) return { label: "RENDAH", score };
+    if (score <= 9) return { label: "SEDANG", score };
+    if (score <= 14) return { label: "TINGGI", score };
+    return { label: "KRITIS", score };
+  };
+
   const exportToExcel = () => {
     playUISound("click");
     const wb = utils.book_new();
@@ -2582,11 +2933,30 @@ function ExportCenter({
     );
     utils.book_append_sheet(wb, utils.json_to_sheet(threats), "Data_Ancaman");
     utils.book_append_sheet(wb, utils.json_to_sheet(controls), "Data_Kontrol");
+
+    // Tambahkan sheet Risiko
+    if (risks && risks.length > 0) {
+      const formattedRisks = risks.map((r) => ({
+        "ID Risiko": r.id,
+        Skenario: r.name,
+        Likelihood: r.likelihood,
+        Impact: r.impact,
+        Skor: r.likelihood * r.impact,
+        Status: getRiskStatus(r.likelihood, r.impact).label,
+        "Saran Mitigasi": r.mitigation,
+      }));
+      utils.book_append_sheet(
+        wb,
+        utils.json_to_sheet(formattedRisks),
+        "Analisis_Risiko",
+      );
+    }
+
     writeFile(wb, "Database_Risiko_SMA_Mining.xlsx");
     addLog(
       "EXPORT",
       "Ekspor Dokumen Excel",
-      "Pengguna mengunduh database mentah (XLSX).",
+      "Pengguna mengunduh database mentah komprehensif (XLSX).",
     );
   };
 
@@ -2594,25 +2964,98 @@ function ExportCenter({
     try {
       playUISound("click");
       const doc = new jsPDF();
-      doc.setFontSize(18);
+      doc.setFontSize(16);
       doc.setTextColor(255, 152, 0);
       doc.text("LAPORAN KOMPREHENSIF MANAJEMEN RISIKO", 14, 20);
-      doc.setFontSize(12);
+      doc.setFontSize(11);
       doc.setTextColor(100);
-      doc.text("PT. SAMUDRA MULYA ABADI (SMA MINING)", 14, 28);
-      doc.setFontSize(10);
-      doc.text(`Dicetak pada: ${new Date().toLocaleString()}`, 14, 34);
+      doc.text("PT. SAMUDRA MULYA ABADI (SMA MINING)", 14, 26);
+      doc.setFontSize(9);
+      doc.text(`Dicetak pada: ${new Date().toLocaleString("id-ID")}`, 14, 32);
 
-      let currentY = 45;
+      let currentY = 40;
+
+      // BAGIAN 1: RISIKO PRIORITAS (KRITIS & TINGGI)
+      doc.setFontSize(12);
+      doc.setTextColor(229, 57, 53); // Warna Merah
+      doc.text(
+        "1. PRIORITAS PENANGANAN RISIKO (KRITIS & TINGGI)",
+        14,
+        currentY,
+      );
+
+      const highRisks =
+        risks
+          ?.filter((r) => r.likelihood * r.impact > 9)
+          .sort((a, b) => b.likelihood * b.impact - a.likelihood * a.impact) ||
+        [];
+
+      if (highRisks.length > 0) {
+        autoTable(doc, {
+          startY: currentY + 5,
+          head: [["ID", "Skenario Risiko", "Skor", "Level", "Saran Mitigasi"]],
+          body: highRisks.map((r) => {
+            const stat = getRiskStatus(r.likelihood, r.impact);
+            return [r.id, r.name, stat.score, stat.label, r.mitigation];
+          }),
+          headStyles: { fillColor: [229, 57, 53] },
+          styles: { fontSize: 8, cellPadding: 3 },
+          columnStyles: { 1: { cellWidth: 60 }, 4: { cellWidth: 50 } },
+        });
+      } else {
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(
+          "Tidak ada risiko tingkat Kritis atau Tinggi yang terdeteksi.",
+          14,
+          currentY + 10,
+        );
+        doc.lastAutoTable = { finalY: currentY + 15 };
+      }
+
+      currentY = doc.lastAutoTable.finalY + 15;
+
+      // BAGIAN 2: TOP 5 ANCAMAN DARI MATRIKS
+      doc.setFontSize(12);
+      doc.setTextColor(255, 152, 0);
+      doc.text("2. TOP 5 ANCAMAN BERDASARKAN DAMPAK MATRIKS", 14, currentY);
+
+      const topThreats = [...threats]
+        .map((t) => ({ ...t, score: threatImpMap[t.id] || 0 }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+
+      autoTable(doc, {
+        startY: currentY + 5,
+        head: [["ID Ancaman", "Deskripsi Ancaman", "Skor Dampak Kalkulasi"]],
+        body: topThreats.map((t) => [
+          t.id,
+          t.name,
+          new Intl.NumberFormat("id-ID").format(t.score),
+        ]),
+        headStyles: { fillColor: [255, 152, 0] },
+        styles: { fontSize: 9 },
+      });
+
+      currentY = doc.lastAutoTable.finalY + 15;
+
+      // BAGIAN 3: REGISTRI ASET
       doc.setFontSize(12);
       doc.setTextColor(0);
-      doc.text("1. REGISTRI ASET", 14, currentY);
+      doc.text("3. RINGKASAN VALUASI ASET", 14, currentY);
       autoTable(doc, {
         startY: currentY + 5,
         head: [["ID Aset", "Nama Aset", "Kategori", "Valuasi"]],
-        body: assets.map((a) => [a.id, a.name, a.category, formatIDR(a.value)]),
-        headStyles: { fillColor: [255, 152, 0] },
+        body: assets.map((a) => [
+          a.id,
+          a.name,
+          a.category,
+          `Rp ${new Intl.NumberFormat("id-ID").format(a.value)} Jt`,
+        ]),
+        headStyles: { fillColor: [76, 175, 80] },
+        styles: { fontSize: 9 },
       });
+
       doc.save("Laporan_Manajemen_Risiko.pdf");
       addLog(
         "EXPORT",
@@ -2637,56 +3080,151 @@ function ExportCenter({
     addLog(
       "EXPORT",
       "Cetak Dokumen Terisolasi",
-      "Pengguna mencetak Laporan Ringkasan Eksekutif.",
+      "Pengguna mencetak Laporan Ringkasan Eksekutif untuk Decision Maker.",
     );
-    const printWindow = window.open("", "", "height=800,width=800");
+
+    const printWindow = window.open("", "", "height=800,width=1000");
+
+    // Siapkan data untuk decision maker
+    const totalAssetVal = assets.reduce((sum, a) => sum + (a.value || 0), 0);
+    const criticalRisks =
+      risks?.filter((r) => r.likelihood * r.impact >= 15) || [];
+    const highRisks =
+      risks?.filter(
+        (r) => r.likelihood * r.impact >= 10 && r.likelihood * r.impact < 15,
+      ) || [];
+
     let html = `
       <html>
         <head>
-          <title>Ringkasan Manajemen Risiko SMA Mining</title>
+          <title>Executive Summary - Manajemen Risiko SMA Mining</title>
           <style>
-            body { font-family: 'Arial', sans-serif; padding: 40px; color: #333; }
-            h2 { color: #333; border-bottom: 2px solid #FF9800; padding-bottom: 10px; margin-bottom: 30px;}
-            h3 { color: #555; }
-            ul { list-style: none; padding: 0; }
-            li { padding: 15px; margin-bottom: 10px; border: 1px solid #ddd; border-left: 6px solid #FF9800; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; background-color: #fcfcfc;}
-            .high-risk { border-left-color: #E53935; background-color: #ffebee; }
-            .med-risk { border-left-color: #FFC107; background-color: #fff8e1; }
-            .kpi-container { display: flex; gap: 20px; margin-top: 40px; }
-            .kpi-box { flex: 1; padding: 20px; border: 1px solid #ccc; border-radius: 6px; text-align: center; background-color: #f9f9f9; }
-            .kpi-val { font-size: 28px; font-weight: bold; margin-top: 10px; color: #333; }
-            .val-red { color: #E53935; }
-            .val-green { color: #4CAF50; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #222; background: #fff; line-height: 1.6;}
+            .header { text-align: center; border-bottom: 3px solid #E53935; padding-bottom: 20px; margin-bottom: 30px; }
+            .header h1 { margin: 0; color: #E53935; text-transform: uppercase; letter-spacing: 1px; font-size: 24px;}
+            .header p { margin: 5px 0 0 0; color: #666; font-size: 14px; }
+            
+            .kpi-container { display: flex; gap: 15px; margin-bottom: 40px; }
+            .kpi-box { flex: 1; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; text-align: center; background-color: #fafafa; border-top: 4px solid #333; box-shadow: 0 4px 6px rgba(0,0,0,0.05);}
+            .kpi-box.red { border-top-color: #E53935; }
+            .kpi-box.orange { border-top-color: #FF9800; }
+            .kpi-box.green { border-top-color: #4CAF50; }
+            .kpi-label { font-size: 11px; color: #777; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;}
+            .kpi-val { font-size: 26px; font-weight: 900; margin-top: 8px; color: #222; }
+            
+            h2 { color: #333; font-size: 18px; border-bottom: 2px solid #eee; padding-bottom: 8px; margin-top: 30px;}
+            
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+            th { background-color: #f4f4f4; padding: 12px; text-align: left; border-bottom: 2px solid #ddd; color: #555; }
+            td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: top;}
+            
+            .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; color: #fff;}
+            .bg-critical { background-color: #E53935; }
+            .bg-high { background-color: #FF9800; }
           </style>
         </head>
         <body>
-          <h2>Laporan Ringkasan Cepat Manajemen Risiko</h2>
-          <h3>5 Ancaman Teratas (Top Threats by Magnitude)</h3>
-          <ul>
-    `;
-    topThreats.forEach((t) => {
-      let isHigh = t.score > 10000;
-      let clz = isHigh ? "high-risk" : "med-risk";
-      let stat = isHigh ? "Tinggi" : "Sedang";
-      html += `<li class="${clz}"><span>${t.id} - ${t.name}</span><strong>Skor: ${formatNilai(t.score)} (${stat})</strong></li>`;
-    });
-    html += `
-          </ul>
+          <div class="header">
+            <h1>RINGKASAN EKSEKUTIF MANAJEMEN RISIKO</h1>
+            <p>PT. Samudra Mulya Abadi (SMA Mining) | Dicetak pada: ${new Date().toLocaleString("id-ID")}</p>
+          </div>
+
           <div class="kpi-container">
-            <div class="kpi-box"><div>Total Aset</div><div class="kpi-val">${assets.length}</div></div>
-            <div class="kpi-box"><div>Total Kerentanan</div><div class="kpi-val val-red">${vulnerabilities.length}</div></div>
-            <div class="kpi-box"><div>Kontrol Aktif</div><div class="kpi-val val-green">${controls.length}</div></div>
+            <div class="kpi-box green">
+              <div class="kpi-label">Total Valuasi Aset Terlindungi</div>
+              <div class="kpi-val">Rp ${new Intl.NumberFormat("id-ID").format(totalAssetVal)} Jt</div>
+            </div>
+            <div class="kpi-box red">
+              <div class="kpi-label">Risiko Kritis (Immediate Action)</div>
+              <div class="kpi-val" style="color: #E53935;">${criticalRisks.length} Skenario</div>
+            </div>
+            <div class="kpi-box orange">
+              <div class="kpi-label">Risiko Tinggi (Monitor)</div>
+              <div class="kpi-val" style="color: #FF9800;">${highRisks.length} Skenario</div>
+            </div>
+          </div>
+
+          <h2>1. PERHATIAN UTAMA: SKENARIO RISIKO KRITIS & TINGGI</h2>
+          <p style="font-size: 13px; color: #666; margin-top: -5px;">Area yang membutuhkan persetujuan mitigasi dan alokasi sumber daya segera dari manajemen.</p>
+          <table>
+            <thead>
+              <tr>
+                <th width="10%">ID</th>
+                <th width="35%">Skenario Risiko</th>
+                <th width="15%">Level</th>
+                <th width="40%">Rekomendasi Mitigasi / Kontrol</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+
+    const combinedPriorityRisks = [...criticalRisks, ...highRisks].sort(
+      (a, b) => b.likelihood * b.impact - a.likelihood * a.impact,
+    );
+
+    if (combinedPriorityRisks.length === 0) {
+      html += `<tr><td colspan="4" style="text-align: center; color: #888;">Tidak ada risiko tingkat kritis atau tinggi saat ini. Status operasional aman.</td></tr>`;
+    } else {
+      combinedPriorityRisks.forEach((r) => {
+        const score = r.likelihood * r.impact;
+        const isCritical = score >= 15;
+        html += `
+          <tr>
+            <td><strong>${r.id}</strong></td>
+            <td>${r.name}</td>
+            <td><span class="badge ${isCritical ? "bg-critical" : "bg-high"}">${isCritical ? "KRITIS" : "TINGGI"} (${score})</span></td>
+            <td><em>${r.mitigation || "Belum ada mitigasi ditentukan"}</em></td>
+          </tr>
+        `;
+      });
+    }
+
+    html += `
+            </tbody>
+          </table>
+
+          <h2>2. TOP 5 ANCAMAN TERBESAR (BERDASARKAN KALKULASI MATRIKS DAMPAK)</h2>
+          <table>
+            <thead>
+              <tr>
+                <th width="15%">ID Ancaman</th>
+                <th width="60%">Deskripsi Ancaman</th>
+                <th width="25%">Skor Magnitude</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+
+    topThreats.forEach((t) => {
+      html += `
+        <tr>
+          <td><strong>${t.id}</strong></td>
+          <td>${t.name}</td>
+          <td><strong>${new Intl.NumberFormat("id-ID").format(t.score)}</strong></td>
+        </tr>
+      `;
+    });
+
+    html += `
+            </tbody>
+          </table>
+          
+          <div style="margin-top: 50px; font-size: 11px; color: #999; text-align: center; border-top: 1px solid #eee; padding-top: 10px;">
+            Dokumen Rahasia & Internal - SMA Mining Command System
           </div>
         </body>
       </html>
     `;
+
     printWindow.document.write(html);
     printWindow.document.close();
     printWindow.focus();
+
+    // Memberi waktu browser merender tabel sebelum memanggil print
     setTimeout(() => {
       printWindow.print();
       printWindow.close();
-    }, 500);
+    }, 800);
   };
 
   return (
@@ -2694,10 +3232,11 @@ function ExportCenter({
       <div className="header-section">
         <h1 className="main-title">PUSAT LAPORAN & EKSPOR</h1>
         <p className="sub-title">
-          Unduh data mentah atau laporan analitik untuk keperluan dokumentasi
-          fisik.
+          Unduh data mentah atau laporan analitik untuk keperluan pelaporan
+          eksekutif.
         </p>
       </div>
+
       <div
         style={{
           display: "grid",
@@ -2706,6 +3245,7 @@ function ExportCenter({
           marginBottom: "40px",
         }}
       >
+        {/* Card PDF */}
         <div
           className="dashboard-card glow-effect"
           style={{
@@ -2727,7 +3267,7 @@ function ExportCenter({
                 gap: "10px",
               }}
             >
-              📄 Ekspor Laporan Lengkap (PDF)
+              📄 Laporan Komprehensif (PDF)
             </h2>
             <p
               style={{
@@ -2737,8 +3277,8 @@ function ExportCenter({
                 lineHeight: "1.6",
               }}
             >
-              Menghasilkan laporan PDF utuh yang mencakup Aset, Kerentanan,
-              Ancaman, dan Kontrol.
+              Menghasilkan laporan PDF utuh yang mencakup Prioritas Risiko
+              (Kritis/Tinggi), Kalkulasi Ancaman Matriks, dan Valuasi Aset.
             </p>
           </div>
           <button
@@ -2765,6 +3305,8 @@ function ExportCenter({
             ⬇ UNDUH DOKUMEN PDF
           </button>
         </div>
+
+        {/* Card Excel */}
         <div
           className="dashboard-card glow-effect"
           style={{
@@ -2786,7 +3328,7 @@ function ExportCenter({
                 gap: "10px",
               }}
             >
-              📊 Ekspor ke Excel (XLSX)
+              📊 Ekspor Database (XLSX)
             </h2>
             <p
               style={{
@@ -2796,8 +3338,8 @@ function ExportCenter({
                 lineHeight: "1.6",
               }}
             >
-              Mengunduh seluruh database (Matriks tidak termasuk) ke dalam file
-              .xlsx multi-sheet.
+              Mengunduh seluruh data tabel mentah (Aset, Kerentanan, Ancaman,
+              Kontrol, dan Risiko) ke dalam file excel multi-sheet.
             </p>
           </div>
           <button
@@ -2825,6 +3367,7 @@ function ExportCenter({
           </button>
         </div>
       </div>
+
       <div
         className="dashboard-card full-width-card glow-effect"
         style={{ padding: "30px" }}
@@ -2838,8 +3381,14 @@ function ExportCenter({
             fontSize: "18px",
           }}
         >
-          Ringkasan Eksekutif Terkini
+          Pratinjau Ringkasan Eksekutif
         </h2>
+
+        <p style={{ fontSize: "13px", color: "#888", marginBottom: "20px" }}>
+          Tampilan ini difokuskan pada risiko mana yang memberikan ancaman
+          terbesar saat ini.
+        </p>
+
         <ul style={{ listStyle: "none", padding: 0, margin: "0 0 30px 0" }}>
           {topThreats.map((item) => {
             const isHigh = item.score > 10000;
@@ -2876,108 +3425,13 @@ function ExportCenter({
                     fontWeight: "bold",
                   }}
                 >
-                  Skor: {formatNilai(item.score)} (
-                  {isHigh ? "Tinggi" : "Sedang"})
+                  Magnitude: {new Intl.NumberFormat("id-ID").format(item.score)}
                 </span>
               </li>
             );
           })}
         </ul>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "20px",
-            marginBottom: "30px",
-          }}
-        >
-          <div
-            style={{
-              padding: "20px",
-              background: "rgba(0,0,0,0.5)",
-              borderRadius: "6px",
-              border: "1px solid #333",
-              textAlign: "center",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "12px",
-                color: "#888",
-                marginBottom: "8px",
-                textTransform: "uppercase",
-                letterSpacing: "1px",
-              }}
-            >
-              Total Aset
-            </div>
-            <div
-              style={{ fontSize: "32px", fontWeight: "bold", color: "#ddd" }}
-            >
-              {assets.length}
-            </div>
-          </div>
-          <div
-            style={{
-              padding: "20px",
-              background: "rgba(0,0,0,0.5)",
-              borderRadius: "6px",
-              border: "1px solid #333",
-              textAlign: "center",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "12px",
-                color: "#888",
-                marginBottom: "8px",
-                textTransform: "uppercase",
-                letterSpacing: "1px",
-              }}
-            >
-              Total Kerentanan
-            </div>
-            <div
-              style={{
-                fontSize: "32px",
-                fontWeight: "bold",
-                color: COLORS.red,
-              }}
-            >
-              {vulnerabilities.length}
-            </div>
-          </div>
-          <div
-            style={{
-              padding: "20px",
-              background: "rgba(0,0,0,0.5)",
-              borderRadius: "6px",
-              border: "1px solid #333",
-              textAlign: "center",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "12px",
-                color: "#888",
-                marginBottom: "8px",
-                textTransform: "uppercase",
-                letterSpacing: "1px",
-              }}
-            >
-              Kontrol Aktif
-            </div>
-            <div
-              style={{
-                fontSize: "32px",
-                fontWeight: "bold",
-                color: COLORS.green,
-              }}
-            >
-              {controls.length}
-            </div>
-          </div>
-        </div>
+
         <button
           onClick={handlePrintSummary}
           onMouseEnter={(e) => {
@@ -3000,7 +3454,7 @@ function ExportCenter({
             borderRadius: "4px",
           }}
         >
-          🖨️ CETAK RINGKASAN HALAMAN INI (PRINT ONLY)
+          🖨️ CETAK LAPORAN EKSEKUTIF
         </button>
       </div>
     </div>

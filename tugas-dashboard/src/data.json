@@ -4,61 +4,61 @@
       "category": "Fisik",
       "id": "AST-01",
       "name": "Armada Alat Berat Excavator",
-      "value": 200000
+      "value": 200
     },
     {
       "category": "Basis Data",
       "id": "AST-02",
       "name": "Database Engineering dan Produksi",
-      "value": 75000
+      "value": 75
     },
     {
       "category": "Perangkat Keras",
       "id": "AST-03",
       "name": "Perangkat Pemantauan CCTV dan Dashcam",
-      "value": 15000
+      "value": 15
     },
     {
       "category": "Perangkat Keras",
       "id": "AST-04",
       "name": "Radio Room dan Server Utama",
-      "value": 35000
+      "value": 35
     },
     {
       "category": "Basis Data",
       "id": "AST-05",
       "name": "Data Rahasia Bisnis dan Operasional",
-      "value": 150000
+      "value": 150
     },
     {
       "category": "Tak Berwujud",
       "id": "AST-06",
       "name": "Sertifikasi Standar Manajemen Mutu Internasional",
-      "value": 50000
+      "value": 50
     },
     {
       "category": "Tak Berwujud",
       "id": "AST-07",
       "name": "Sumber Daya Manusia Pengawas dan Operator",
-      "value": 500000
+      "value": 500
     },
     {
       "category": "Finansial",
       "id": "AST-08",
       "name": "Material Hasil Tambang Emas dan Perak",
-      "value": 1000000
+      "value": 1000
     },
     {
       "category": "Perangkat Keras",
       "id": "AST-09",
       "name": "Perangkat Komunikasi Smartphone Lapangan",
-      "value": 25000
+      "value": 25
     },
     {
       "category": "Fisik",
       "id": "AST-10",
       "name": "Dokumen Fisik Formulir Laporan Manual",
-      "value": 5000
+      "value": 5
     }
   ],
   "controls": [
@@ -87,100 +87,14 @@
       "name": "Implementasi Disiplin Standar Keselamatan Internasional"
     }
   ],
-  "risks": [
+  "logs": [
     {
-      "id": "RSK-01",
-      "impact": 2,
-      "likelihood": 4,
-      "mitigation": "Prosedur Pengisian Laporan Kertas Manual",
-      "name": "Keterlambatan pelaporan ke pusat kendali akibat hilangnya sinyal seluler di area lubang galian."
-    },
-    {
-      "id": "RSK-02",
-      "impact": 4,
-      "likelihood": 3,
-      "mitigation": "Sistem Dashcam Pemantau Kabin Alat Berat",
-      "name": "Insiden kecelakaan kerja atau kesalahan angkat material akibat batas fisik manusia pada shift malam."
-    },
-    {
-      "id": "RSK-03",
-      "impact": 5,
-      "likelihood": 2,
-      "mitigation": "Regulasi Tegas Larangan Perekaman Area Operasional",
-      "name": "Bocornya rahasia nilai tambang ke publik akibat perekaman visual secara diam diam oleh oknum pekerja."
-    },
-    {
-      "id": "RSK-04",
-      "impact": 2,
-      "likelihood": 2,
-      "mitigation": "Penyediaan Infrastruktur Server Cadangan",
-      "name": "Penumpukan antrean pemrosesan data rekapitulasi akibat matinya server utama secara tiba tiba."
-    },
-    {
-      "id": "RSK-05",
-      "impact": 4,
-      "likelihood": 1,
-      "mitigation": "Penerapan Enkripsi Kata Sandi dan Firewall Jaringan",
-      "name": "Perubahan ilegal pada data produksi harian akibat infiltrasi peretas ke dalam sistem jaringan perusahaan."
-    },
-    {
-      "id": "RSK-06",
-      "impact": 4,
-      "likelihood": 2,
-      "mitigation": "Implementasi Disiplin Standar Keselamatan Internasional",
-      "name": "Pemotongan pembayaran oleh pihak klien akibat tingginya selisih angka produksi pada akhir periode."
-    }
-  ],
-  "threats": [
-    {
-      "id": "THR-01",
-      "name": "Pemutusan Jaringan Sinyal Telekomunikasi Publik"
-    },
-    {
-      "id": "THR-02",
-      "name": "Kerusakan Fisik pada Komponen Server Utama"
-    },
-    {
-      "id": "THR-03",
-      "name": "Pemadaman Aliran Listrik Skala Area Pertambangan"
-    },
-    {
-      "id": "THR-04",
-      "name": "Kesalahan Prosedur Pengoperasian Alat Berat"
-    },
-    {
-      "id": "THR-05",
-      "name": "Penyebaran Dokumentasi Visual Internal Secara Ilegal"
-    },
-    {
-      "id": "THR-06",
-      "name": "Serangan Perangkat Lunak Berbahaya pada Database"
-    },
-    {
-      "id": "THR-07",
-      "name": "Kesalahan Input Data Laporan oleh Manusia"
-    }
-  ],
-  "vulnerabilities": [
-    {
-      "id": "VULN-01",
-      "name": "Topografi Tambang Terhalang Gunung dan Area Cekungan"
-    },
-    {
-      "id": "VULN-02",
-      "name": "Ketiadaan Jalur Komunikasi Radio Khusus Internal"
-    },
-    {
-      "id": "VULN-03",
-      "name": "Penurunan Konsentrasi dan Kelelahan Fisik Pekerja"
-    },
-    {
-      "id": "VULN-04",
-      "name": "Penggunaan Perangkat Komunikasi Personal di Area Kerja"
-    },
-    {
-      "id": "VULN-05",
-      "name": "Titik Geografis Terpencil dan Jauh dari Fasilitas Kota"
+      "action": "Valuasi Aset Dikoreksi",
+      "description": "Menghapus kelebihan angka nol pada database aset agar sesuai dengan format jutaan di UI.",
+      "id": "SYS-INIT-003",
+      "timestamp": "2026-04-28T12:00:00.000Z",
+      "type": "SYSTEM",
+      "user": "SYSTEM"
     }
   ],
   "matrix1Scores": {
@@ -352,14 +266,100 @@
       "THR-07": 3
     }
   },
-  "logs": [
+  "risks": [
     {
-      "id": "SYS-INIT-002",
-      "type": "SYSTEM",
-      "action": "Penyempurnaan Terminologi Data",
-      "description": "Istilah kerentanan dan ancaman telah disesuaikan menjadi lebih presisi secara teknis tanpa merubah nilai matriks.",
-      "user": "SYSTEM",
-      "timestamp": "2026-04-28T09:00:00.000Z"
+      "id": "RSK-01",
+      "impact": 2,
+      "likelihood": 4,
+      "mitigation": "Prosedur Pengisian Laporan Kertas Manual",
+      "name": "Keterlambatan pelaporan ke pusat kendali akibat hilangnya sinyal seluler di area lubang galian."
+    },
+    {
+      "id": "RSK-02",
+      "impact": 4,
+      "likelihood": 3,
+      "mitigation": "Sistem Dashcam Pemantau Kabin Alat Berat",
+      "name": "Insiden kecelakaan kerja atau kesalahan angkat material akibat batas fisik manusia pada shift malam."
+    },
+    {
+      "id": "RSK-03",
+      "impact": 5,
+      "likelihood": 2,
+      "mitigation": "Regulasi Tegas Larangan Perekaman Area Operasional",
+      "name": "Bocornya rahasia nilai tambang ke publik akibat perekaman visual secara diam diam oleh oknum pekerja."
+    },
+    {
+      "id": "RSK-04",
+      "impact": 2,
+      "likelihood": 2,
+      "mitigation": "Penyediaan Infrastruktur Server Cadangan",
+      "name": "Penumpukan antrean pemrosesan data rekapitulasi akibat matinya server utama secara tiba tiba."
+    },
+    {
+      "id": "RSK-05",
+      "impact": 4,
+      "likelihood": 1,
+      "mitigation": "Penerapan Enkripsi Kata Sandi dan Firewall Jaringan",
+      "name": "Perubahan ilegal pada data produksi harian akibat infiltrasi peretas ke dalam sistem jaringan perusahaan."
+    },
+    {
+      "id": "RSK-06",
+      "impact": 4,
+      "likelihood": 2,
+      "mitigation": "Implementasi Disiplin Standar Keselamatan Internasional",
+      "name": "Pemotongan pembayaran oleh pihak klien akibat tingginya selisih angka produksi pada akhir periode."
+    }
+  ],
+  "threats": [
+    {
+      "id": "THR-01",
+      "name": "Pemutusan Jaringan Sinyal Telekomunikasi Publik"
+    },
+    {
+      "id": "THR-02",
+      "name": "Kerusakan Fisik pada Komponen Server Utama"
+    },
+    {
+      "id": "THR-03",
+      "name": "Pemadaman Aliran Listrik Skala Area Pertambangan"
+    },
+    {
+      "id": "THR-04",
+      "name": "Kesalahan Prosedur Pengoperasian Alat Berat"
+    },
+    {
+      "id": "THR-05",
+      "name": "Penyebaran Dokumentasi Visual Internal Secara Ilegal"
+    },
+    {
+      "id": "THR-06",
+      "name": "Serangan Perangkat Lunak Berbahaya pada Database"
+    },
+    {
+      "id": "THR-07",
+      "name": "Kesalahan Input Data Laporan oleh Manusia"
+    }
+  ],
+  "vulnerabilities": [
+    {
+      "id": "VULN-01",
+      "name": "Topografi Tambang Terhalang Gunung dan Area Cekungan"
+    },
+    {
+      "id": "VULN-02",
+      "name": "Ketiadaan Jalur Komunikasi Radio Khusus Internal"
+    },
+    {
+      "id": "VULN-03",
+      "name": "Penurunan Konsentrasi dan Kelelahan Fisik Pekerja"
+    },
+    {
+      "id": "VULN-04",
+      "name": "Penggunaan Perangkat Komunikasi Personal di Area Kerja"
+    },
+    {
+      "id": "VULN-05",
+      "name": "Titik Geografis Terpencil dan Jauh dari Fasilitas Kota"
     }
   ]
 }
